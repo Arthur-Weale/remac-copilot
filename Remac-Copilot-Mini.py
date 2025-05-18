@@ -27,7 +27,7 @@ colorama_init(autoreset=True)
 
 # === SETUP LOGGER ===
 logger = logging.getLogger("MT5Bot")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
     f"{Fore.CYAN}[%(asctime)s]{Style.RESET_ALL} %(levelname)s: {Fore.YELLOW}%(message)s{Style.RESET_ALL}",
@@ -66,14 +66,6 @@ def calc_donchian(df, period):
     return upper, middle, lower
 
 
-def calc_ema(df, period):
-    return df['close'].ewm(span=period).mean()
-
-
-def calc_atr(df, period):
-    return talib.ATR(df['high'].values, df['low'].values, df['close'].values, period)
-
-
 def calc_stoch(df):
     k, d = talib.STOCH(
         df['high'].values, df['low'].values, df['close'].values,
@@ -86,14 +78,11 @@ def calc_stoch(df):
 
 def entry_phase(macd_hist, stoch_k, stoch_d, price, upper, lower):
     phase = 0
-    # Donchian touch
     if price <= lower or price >= upper:
         phase += 1
-    # MACD peak/trough
     if (macd_hist.iloc[-2] > 0 and macd_hist.iloc[-1] < macd_hist.iloc[-2]) or \
        (macd_hist.iloc[-2] < 0 and macd_hist.iloc[-1] > macd_hist.iloc[-2]):
         phase += 1
-    # Stochastic crossover
     if stoch_k.iloc[-2] < stoch_d.iloc[-2] and stoch_k.iloc[-1] > stoch_d.iloc[-1] and stoch_k.iloc[-1] <= 30:
         phase += 1
     if stoch_k.iloc[-2] > stoch_d.iloc[-2] and stoch_k.iloc[-1] < stoch_d.iloc[-1] and stoch_k.iloc[-1] >= 80:
@@ -103,14 +92,13 @@ def entry_phase(macd_hist, stoch_k, stoch_d, price, upper, lower):
 # === STOP LOSS CALCULATION ===
 
 def get_atr_sl(is_buy, entry_price, df):
-    atr = calc_atr(df, ATR_PERIOD)[-1] * ATR_MULTIPLIER
+    atr = talib.ATR(df['high'].values, df['low'].values, df['close'].values, ATR_PERIOD)[-1] * ATR_MULTIPLIER
     recent = df.iloc[-4:-1]
     if is_buy:
         base = recent['low'].min() if recent['low'].min() < entry_price else df['low'].iloc[-1]
         return base - atr
-    else:
-        base = recent['high'].max() if recent['high'].max() > entry_price else df['high'].iloc[-1]
-        return base + atr
+    base = recent['high'].max() if recent['high'].max() > entry_price else df['high'].iloc[-1]
+    return base + atr
 
 # === TRADE EXECUTION ===
 
@@ -174,7 +162,7 @@ def modify_sl(pos, new_sl):
         "action": mt5.TRADE_ACTION_SLTP,
         "position": pos.ticket,
         "sl": new_sl,
-        "magic": MAGIC,
+        "magic": MAGIC
     }
     r = mt5.order_send(req)
     if r and r.retcode == mt5.TRADE_RETCODE_DONE:
@@ -190,20 +178,17 @@ def manage_trades(df1, upper, mid, lower):
     tick = mt5.symbol_info_tick(SYMBOL)
     price = tick.ask
 
-    # Close 75% on band touch
     if price >= upper or price <= lower:
         to_close = int(round(len(positions) * 0.75))
         logger.info(f"Band touch: closing {to_close} of {len(positions)} positions.")
         for pos in positions[:to_close]:
             close_position(pos)
 
-    # Break-even SL on middle band
     if lower < price < upper:
         logger.info("Middle band touched: moving SLs to break-even.")
         for pos in positions:
             modify_sl(pos, pos.price_open)
 
-    # Trailing SL for remaining
     positions = mt5.positions_get(symbol=SYMBOL) or []
     for pos in positions:
         new_sl = get_atr_sl(pos.type == mt5.ORDER_TYPE_BUY, pos.price_open, df1)
@@ -222,7 +207,7 @@ def report_status(last_action, positions):
 # === MAIN LOOP ===
 
 def run_bot():
-    logger.info("Bot started: phased entries with enhanced logging.")
+    logger.info("Bot started: phased entries with debug logging.")
     last_report = time.time()
     last_action = "None"
 
@@ -233,22 +218,24 @@ def run_bot():
         up, mid, low = calc_donchian(df1, DONCHIAN_PERIOD)
         price = df1['close'].iloc[-1]
 
-        # Entry when no positions
+        # Debug: log phase evaluation
+        phase = entry_phase(macd_hist, stoch_k, stoch_d, price, up.iloc[-1], low.iloc[-1])
+        logger.debug(f"Phase calc -> phase={phase}, price={price:.5f}, lower={low.iloc[-1]:.5f}, upper={up.iloc[-1]:.5f}")
+
         if not mt5.positions_total():
-            phase = entry_phase(macd_hist, stoch_k, stoch_d, price, up.iloc[-1], low.iloc[-1])
-            if phase:
+            if phase > 0:
                 is_buy = price <= low.iloc[-1]
                 is_sell = price >= up.iloc[-1]
                 if is_buy or is_sell:
                     execute_phase_trade(is_buy, phase, df1)
                     last_action = f"Entered phase {phase} {'BUY' if is_buy else 'SELL'}"
+                else:
+                    logger.debug("Phase criteria met but price not touching Donchian band for direction.")
 
-        # Manage
         manage_trades(df1, up.iloc[-1], mid.iloc[-1], low.iloc[-1])
         if mt5.positions_total():
             last_action = last_action or "Managing trades"
 
-        # Periodic status
         if time.time() - last_report >= LOG_INTERVAL:
             report_status(last_action, mt5.positions_get(symbol=SYMBOL) or [])
             last_report = time.time()
