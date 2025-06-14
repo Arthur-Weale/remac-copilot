@@ -12,10 +12,12 @@ import random
 import time
 import os
 import logging
+import pyperclip
+import win32clipboard  # For Windows clipboard access
 from datetime import datetime
 
 # ===== TESTING CONFIG =====
-TEST_MODE = True  # Set to False in production
+TEST_MODE = False  # Set to False in production
 # ==========================
 
 # Suppress TensorFlow warnings
@@ -28,83 +30,169 @@ WHATSAPP_TARGET = '"IntelliTrade"'
 PROFILE_DIR = os.path.join(os.getcwd(), 'whatsapp_profile')
 os.makedirs(PROFILE_DIR, exist_ok=True)  # Ensure directory exists
 
-# Chrome options - critical fixes
+# Chrome options with persistent profile
 CHROME_OPTIONS = [
-    "--no-sandbox",                 # MUST BE FIRST! Bypass OS security model
-    "--disable-dev-shm-usage",      # Overcome limited resource problems
-    "--disable-gpu",                # GPU issues can cause crashes
-    f"user-data-dir={PROFILE_DIR}", # Use dedicated profile
-    "--window-size=1920,1080"
+    f"user-data-dir={PROFILE_DIR}",
+    "--profile-directory=Default",
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--window-size=1920,1080",
+    "--disable-blink-features=AutomationControlled",
+    f"user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 ]
-CHROMEDRIVER_PATH = "chromedriver.exe"  # In same directory as script
-CHROME_BINARY_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+CHROMEDRIVER_PATH = "chromedriver.exe"
 
 def setup_whatsapp():
-    """Initialize Chrome with multiple fallback strategies"""
-    attempts = [
-        try_standard_init,
-        try_headless_init
-    ]
-    
-    for attempt in attempts:
-        driver, wait = attempt()
-        if driver:
-            return driver, wait
-    
-    raise RuntimeError("All Chrome initialization attempts failed")
-
-def try_standard_init():
-    """First attempt: Standard initialization with visible browser"""
+    """Initialize Chrome with persistent session handling and robust detection"""
     try:
-        print("Attempting standard initialization...")
+        print("Initializing Chrome with persistent profile...")
         service = Service(executable_path=CHROMEDRIVER_PATH)
         options = Options()
         
         for option in CHROME_OPTIONS:
             options.add_argument(option)
             
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+        options.add_experimental_option('useAutomationExtension', False)
         
         driver = webdriver.Chrome(service=service, options=options)
-        driver.get("https://web.whatsapp.com/")
-        print("✅ Chrome initialized successfully with standard method")
-        print("Please scan the QR code and press Enter when ready")
-        input()  # Wait for user to scan QR code
-        wait = WebDriverWait(driver, 120)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
-        # Verify login by checking for chat list
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[title='Chat list']")))
-        print("WhatsApp Web login successful")
+        print("Loading WhatsApp Web...")
+        driver.get("https://web.whatsapp.com/")
+        print("✅ Chrome initialized successfully")
+        
+        # Visual feedback for user
+        print("\n==================================================")
+        print("WAITING FOR WHATSAPP LOGIN - PLEASE CHECK BROWSER")
+        print("==================================================")
+        print("1. If you see QR code, please scan it")
+        print("2. If you're already logged in, do nothing")
+        print("3. The script will automatically proceed after login")
+        print("==================================================\n")
+        
+        # Wait for either login state or QR code with extended timeout
+        start_time = time.time()
+        timeout = 240  # 4 minutes
+        logged_in = False
+        
+        while time.time() - start_time < timeout:
+            try:
+                # Debug: print current URL and page title
+                print(f"Current URL: {driver.current_url}")
+                print(f"Page title: {driver.title}")
+                
+                # Check if we're logged in by multiple methods
+                logged_in_selectors = [
+                    ("div[data-testid='chat-list']", "chat list"),
+                    ("div[title='Type a message']", "message input"),
+                    ("div[data-testid='conversation-panel']", "conversation panel"),
+                    ("div[aria-label='Message list']", "message list"),
+                    ("header[data-testid='conversation-header']", "conversation header"),
+                    ("div[role='grid']", "message grid")
+                ]
+                
+                for selector, description in logged_in_selectors:
+                    if len(driver.find_elements(By.CSS_SELECTOR, selector)) > 0:
+                        print(f"✅ Detected {description} - logged in")
+                        logged_in = True
+                        break
+                
+                if logged_in:
+                    break
+                    
+                # Check for QR code with multiple selectors
+                qr_selectors = [
+                    ("canvas[aria-label='Scan me!']", "QR code canvas"),
+                    ("div[data-ref]", "QR code container"),
+                    ("canvas[data-ref]", "QR code data-ref"),
+                    ("div[data-testid='qrcode']", "QR code testid")
+                ]
+                
+                for selector, description in qr_selectors:
+                    if len(driver.find_elements(By.CSS_SELECTOR, selector)) > 0:
+                        print(f"⚠️ Detected {description} - please scan to login")
+                        
+                        # Wait for login to complete after scanning
+                        scan_start = time.time()
+                        while time.time() - scan_start < 180:  # 3 minutes to scan
+                            # Check if we're now logged in
+                            for login_selector, desc in logged_in_selectors:
+                                if len(driver.find_elements(By.CSS_SELECTOR, login_selector)) > 0:
+                                    print(f"✅ Login detected after QR scan ({desc})")
+                                    logged_in = True
+                                    break
+                            if logged_in:
+                                break
+                                
+                            print("Waiting for QR scan to complete...")
+                            time.sleep(5)
+                        break
+                
+                if logged_in:
+                    break
+                    
+                # Check for loading spinner
+                loading_selectors = [
+                    "div[data-testid='loading-screen']",
+                    "div[aria-label='Loading...']",
+                    "div[class*='loading']",
+                    "div[class*='spinner']"
+                ]
+                
+                for selector in loading_selectors:
+                    if len(driver.find_elements(By.CSS_SELECTOR, selector)) > 0:
+                        print("⏳ WhatsApp is loading...")
+                        time.sleep(5)
+                        continue
+                
+                # Check for error messages
+                error_selectors = [
+                    "div[class*='error']",
+                    "div[class*='exception']",
+                    "div[class*='problem']",
+                    "div[class*='refresh']"
+                ]
+                
+                for selector in error_selectors:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    if elements:
+                        print(f"⚠️ Error detected: {elements[0].text[:100]}")
+                        # Suggest refresh
+                        print("Attempting to refresh page...")
+                        driver.refresh()
+                        time.sleep(5)
+                        break
+                
+                # No recognizable elements found
+                print("⚠️ Unrecognized screen state - saving screenshot")
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                screenshot_name = f'whatsapp_unknown_{timestamp}.png'
+                driver.save_screenshot(screenshot_name)
+                print(f"Saved screenshot as '{screenshot_name}'")
+                time.sleep(5)
+                
+            except Exception as e:
+                print(f"⚠️ Detection error: {str(e)}")
+                time.sleep(5)
+            
+        if not logged_in:
+            # Save screenshot for debugging
+            driver.save_screenshot('whatsapp_timeout.png')
+            print("❌ WhatsApp login detection timed out after 4 minutes")
+            print("Saved screenshot as 'whatsapp_timeout.png'")
+            raise RuntimeError("WhatsApp login detection timed out")
+        
+        # Create WebDriverWait instance
+        wait = WebDriverWait(driver, 30)
+        print("✅ WhatsApp login successful")
         return driver, wait
+            
     except Exception as e:
-        print(f"⚠️ Standard init failed: {str(e)}")
-        return None, None
+        print(f"⚠️ Chrome initialization failed: {str(e)}")
+        raise RuntimeError("Chrome initialization failed")            
 
-def try_headless_init():
-    """Second attempt: Headless mode for background operation"""
-    try:
-        print("Attempting headless initialization...")
-        service = Service(executable_path=CHROMEDRIVER_PATH)
-        options = Options()
-        options.add_argument("--headless=new")
-        
-        # Add all non-headless options
-        for option in CHROME_OPTIONS:
-            if not option.startswith("--headless"):
-                options.add_argument(option)
-        
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.get("https://web.whatsapp.com/")
-        print("✅ Chrome initialized in headless mode")
-        
-        # Wait for login to complete in headless mode
-        wait = WebDriverWait(driver, 120)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[title='Chat list']")))
-        print("WhatsApp Web login successful in headless mode")
-        return driver, wait
-    except Exception as e:
-        print(f"⚠️ Headless init failed: {str(e)}")
-        return None, None
 
 # === CONFIG ===
 MT5_PATH = r"C:\Program Files\MetaTrader 5 Terminal\terminal64.exe"
@@ -199,32 +287,11 @@ def send_test_message(driver, wait):
     try:
         test_msg = "📈 IntelliTrade is online and monitoring markets!"
         print("Sending test message to WhatsApp...")
-        
-        # Refresh to ensure we're on the main page
-        driver.refresh()
-        time.sleep(3)
-        
-        # Find target chat
-        chat_css = f"span[title={WHATSAPP_TARGET}]"
-        group_title = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, chat_css)))
-        group_title.click()
-        time.sleep(2)  # Allow chat to load
-        
-        # Find message input box
-        input_css = "div[title='Type a message'][contenteditable='true']"
-        input_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, input_css)))
-        
-        # Send test message
-        input_box.send_keys(test_msg + Keys.ENTER)
-        print("✅ Test message sent to WhatsApp")
-        return True
+        return send_whatsapp_message(driver, wait, test_msg)
     except Exception as e:
         print(f"❌ Failed to send test message: {e}")
-        # Save screenshot for debugging
-        driver.save_screenshot('whatsapp_error.png')
-        print("Saved screenshot as 'whatsapp_error.png'")
         return False
-
+    
 def simulate_signal(driver, wait, tracked):
     """Simulate a trade signal for testing purposes"""
     try:
@@ -243,78 +310,101 @@ def simulate_signal(driver, wait, tracked):
         print(f"TPs: {tps}")
         print(f"SL: {sl}\n")
         
-        # Refresh to ensure we're on the main page
-        driver.refresh()
-        time.sleep(3)
-        
-        # Find target chat
-        chat_css = f"span[title={WHATSAPP_TARGET}]"
-        group_title = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, chat_css)))
-        group_title.click()
-        time.sleep(2)  # Allow chat to load
-        
-        # Find message input box
-        input_css = "div[title='Type a message'][contenteditable='true']"
-        input_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, input_css)))
-        
-        # Clear and send message
-        input_box.clear()
-        for line in msg.strip().split('\n'):
-            input_box.send_keys(line)
-            input_box.send_keys(Keys.SHIFT + Keys.ENTER)
-        input_box.send_keys(Keys.ENTER)
-        
-        # Track the simulated trade
-        tracked[sym] = {
-            "id": tid, 
-            "symbol": sym, 
-            "dir": direction,
-            "entry": price, 
-            "tps": tps, 
-            "sl": sl,
-            "status": "open", 
-            "hit": [],
-            "simulated": True  # Mark as simulated
-        }
-        save_trades(tracked)
-        print(f"✅ Simulated signal sent for {sym} {direction}")
-        return True
+        # Send using our robust message sender
+        if send_whatsapp_message(driver, wait, msg):
+            # Track the simulated trade
+            tracked[sym] = {
+                "id": tid, 
+                "symbol": sym, 
+                "dir": direction,
+                "entry": price, 
+                "tps": tps, 
+                "sl": sl,
+                "status": "open", 
+                "hit": [],
+                "simulated": True  # Mark as simulated
+            }
+            save_trades(tracked)
+            print(f"✅ Simulated signal sent for {sym} {direction}")
+            return True
+        return False
     except Exception as e:
         print(f"❌ Failed to send simulated signal: {e}")
-        driver.save_screenshot('simulate_error.png')
-        print("Saved screenshot as 'simulate_error.png'")
         return False
-
-# === MESSAGE SENDING HELPER ===
+    
+# Update the message sending function
 def send_whatsapp_message(driver, wait, message):
-    """Robust method to send WhatsApp messages"""
-    try:
-        # Refresh to ensure we're on the main page
-        driver.refresh()
-        time.sleep(3)
-        
-        # Find target chat
-        chat_css = f"span[title={WHATSAPP_TARGET}]"
-        group_title = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, chat_css)))
-        group_title.click()
-        time.sleep(2)  # Allow chat to load
-        
-        # Find message input box
-        input_css = "div[title='Type a message'][contenteditable='true']"
-        input_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, input_css)))
-        
-        # Clear and send message
-        input_box.clear()
-        for line in message.strip().split('\n'):
-            input_box.send_keys(line)
-            input_box.send_keys(Keys.SHIFT + Keys.ENTER)
-        input_box.send_keys(Keys.ENTER)
-        return True
-    except Exception as e:
-        print(f"❌ WhatsApp send error: {e}")
-        driver.save_screenshot('message_error.png')
-        print("Saved screenshot as 'message_error.png'")
-        return False
+    """Robust method to send WhatsApp messages using clipboard"""
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            print(f"\nAttempt {attempt+1}/{max_attempts} to send message")
+            
+            # Find target chat
+            chat_css = f"span[title={WHATSAPP_TARGET}]"
+            group_title = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, chat_css)))
+            group_title.click()
+            print("✅ Found and clicked target chat")
+            time.sleep(1)  # Allow chat to load
+            
+            # Find message input box
+            input_selectors = [
+                "div[contenteditable='true'][title='Type a message']",
+                "div[contenteditable='true'][data-tab='10']",
+                "footer div[contenteditable='true']"
+            ]
+            
+            input_box = None
+            for selector in input_selectors:
+                try:
+                    input_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+                    print(f"✅ Found input with selector: {selector}")
+                    break
+                except:
+                    continue
+            
+            if not input_box:
+                raise RuntimeError("Could not find message input box")
+            
+            # Clear input
+            input_box.clear()
+            print("Cleared input box")
+            
+            # Copy message to clipboard
+            try:
+                pyperclip.copy(message)
+            except:
+                # Fallback for Windows
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardText(message)
+                win32clipboard.CloseClipboard()
+            
+            print("📋 Copied message to clipboard")
+            
+            # Paste from clipboard
+            input_box.send_keys(Keys.CONTROL, 'v')
+            print("📋 Pasted message from clipboard")
+            time.sleep(1)  # Allow paste to complete
+            
+            # Send the message
+            input_box.send_keys(Keys.ENTER)
+            print("✅ Message sent successfully")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Message send attempt {attempt+1} failed: {str(e)}")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            screenshot_name = f'message_error_{timestamp}.png'
+            driver.save_screenshot(screenshot_name)
+            print(f"Saved screenshot as '{screenshot_name}'")
+            
+            # Refresh page before retrying
+            driver.refresh()
+            time.sleep(5)
+    
+    print(f"❌ Failed to send message after {max_attempts} attempts")
+    return False
 
 # === MAIN EXECUTION ===
 if __name__ == "__main__":
