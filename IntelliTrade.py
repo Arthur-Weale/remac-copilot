@@ -196,7 +196,7 @@ def setup_whatsapp():
 
 # === CONFIG ===
 MT5_PATH = r"C:\Program Files\MetaTrader 5 Terminal\terminal64.exe"
-TIMEFRAME = mt5.TIMEFRAME_M30
+TIMEFRAME = mt5.TIMEFRAME_M1
 DONCHIAN_PERIOD = 20
 MACD_FAST, MACD_SLOW, MACD_SIGNAL = 12, 26, 9
 FIB_LEVELS = [100, 161.8, 261.8, 423.6]
@@ -242,20 +242,40 @@ def get_donchian(df):
     low = df['low'].rolling(DONCHIAN_PERIOD).min()
     return up, low
 
-def calc_tps_sl(entry, direction):
+def calc_tps_sl(entry, direction, high_touch, low_touch):
+    """
+    Calculate Fibonacci profit targets based on actual Donchian band touches
+    
+    For BUY:
+    - Start: Previous high that touched upper band (high_touch)
+    - End: Current low that touched lower band (low_touch)
+    - Profit targets: Extensions below high_touch
+    
+    For SELL:
+    - Start: Previous low that touched lower band (low_touch)
+    - End: Current high that touched upper band (high_touch)
+    - Profit targets: Extensions above low_touch
+    """
+    channel_height = abs(high_touch - low_touch)
+    
     tps = []
     for lvl in FIB_LEVELS:
         if direction == "BUY":
-            tps.append(round(entry + entry * lvl/10000, 5))  # Fixed: use percentage points correctly
-        else:
-            tps.append(round(entry - entry * lvl/10000, 5))
+            # Extensions below high_touch
+            tp = high_touch - channel_height * (lvl/100)
+            tps.append(round(tp, 5))
+        else:  # SELL
+            # Extensions above low_touch
+            tp = low_touch + channel_height * (lvl/100)
+            tps.append(round(tp, 5))
     
-    # Calculate stop loss based on risk-reward ratio
+    # Risk management
     risk_distance = abs(tps[0] - entry)
     if direction == "BUY":
         sl = round(entry - risk_distance * RR, 5)
     else:
         sl = round(entry + risk_distance * RR, 5)
+    
     return tps, sl
 
 def build_msg(sym, dir, entry, tps, sl, tid, timeframe="M30"):
@@ -300,8 +320,12 @@ def simulate_signal(driver, wait, tracked):
         direction = random.choice(["BUY", "SELL"])
         price = mt5.symbol_info_tick(sym).ask if direction == "BUY" else mt5.symbol_info_tick(sym).bid
         
+        # For simulation, create dummy Donchian bands
+        current_upper = price * 1.005
+        current_lower = price * 0.995
+        
         # Calculate TP/SL
-        tps, sl = calc_tps_sl(price, direction)
+        tps, sl = calc_tps_sl(price, direction, current_upper, current_lower)
         tid = gen_id(sym)
         msg = build_msg(sym, direction, price, tps, sl, tid)
         
@@ -470,30 +494,35 @@ if __name__ == "__main__":
                 
                 # Get last values
                 last = df['close'].iloc[-1]
-                prev_hist = hist.iloc[-2]
                 curr_hist = hist.iloc[-1]
-                prev_sig = sig.iloc[-2]
-                curr_sig = sig.iloc[-1]
+                
+                # Get actual high/low that touched the bands
+                high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
+                low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
                 
                 # ===== TEST SECTION 4: Debug Output =====
                 if TEST_MODE and sym == debug_symbol:
                     print(f"\n[DEBUG] {sym}:")
-                    print(f"  Last: {last:.5f}, Up: {up.iloc[-2]:.5f}, Low: {low.iloc[-2]:.5f}")
-                    print(f"  MACD: Prev={prev_hist:.5f}, Curr={curr_hist:.5f}, Sig={curr_sig:.5f}")
+                    print(f"  Last: {last:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
+                    print(f"  MACD Histogram: {curr_hist:.5f}")
+                    print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
                 # ========================================
                 
-                # Check for signal
+                # Check for signal using your exact methodology
                 direction = None
-                if last >= up.iloc[-2] and prev_hist > prev_sig and curr_hist < curr_sig:
+                # For SELL: Price touches upper band AND histogram is below signal line (negative)
+                if last >= up.iloc[-1] and curr_hist < 0:
                     direction = "SELL"
                     price = mt5.symbol_info_tick(sym).bid
-                elif last <= low.iloc[-2] and prev_hist < prev_sig and curr_hist > curr_sig:
+                # For BUY: Price touches lower band AND histogram is above signal line (positive)
+                elif last <= low.iloc[-1] and curr_hist > 0:
                     direction = "BUY"
                     price = mt5.symbol_info_tick(sym).ask
                 
                 # Generate and send signal if found
                 if direction:
-                    tps, sl = calc_tps_sl(price, direction)
+                    # Calculate Fibonacci-based TPs and SL using actual touches
+                    tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
                     tid = gen_id(sym)
                     msg = build_msg(sym, direction, price, tps, sl, tid)
                     print(f"Signal detected for {sym} {direction}")
@@ -510,7 +539,9 @@ if __name__ == "__main__":
                                 "tps": tps, 
                                 "sl": sl,
                                 "status": "open", 
-                                "hit": []
+                                "hit": [],
+                                "high_touch": high_touch,  # Store for reference
+                                "low_touch": low_touch     # Store for reference
                             }
                             save_trades(tracked)
                             print(f"✅ Signal sent for {sym} {direction}")
