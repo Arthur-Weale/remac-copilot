@@ -23,7 +23,7 @@ TEST_MODE = False  # Set to False in production
 # ==========================
 
 # ===== ASSET FILTER CONFIG =====
-USE_SYMBOL_FILTER = False  # Set to False to monitor all USD/XAU symbols
+USE_SYMBOL_FILTER = True # Set to False to monitor all USD/XAU symbols
 SYMBOL_LIST = ["Volatility 10 Index",
     "Volatility 25 Index",
     "Volatility 50 Index",
@@ -259,16 +259,16 @@ def get_upcoming_news():
         end_date = (now + timedelta(days=1)).strftime('%Y-%m-%d')
         
         # Fetch economic calendar
-        url = f"https://finnhub.io/api/v1/calendar/economic?from={start_date}&to={end_date}&token={FINNHUB_API_KEY}"
+        url = f"https://finnhub.io/api/v1/news?category=general&token={FINNHUB_API_KEY}"
         response = requests.get(url, timeout=10)
         
         if response.status_code != 200:
             print(f"❌ News API error: {response.status_code}")
             return []
             
-        events = response.json().get('economicCalendar', [])
+        events = response.json()
         
-        # Filter for high-impact events
+        # Filter for high-impact event
         high_impact_events = [
             event for event in events 
             if event.get('impact') == 'high' and event.get('time') is not None
@@ -582,154 +582,172 @@ if __name__ == "__main__":
     
     try:
         while True:
-            # Refresh news every 15 minutes
-            if ENABLE_NEWS_ALERTS and (last_news_fetch is None or 
-                                     (datetime.now() - last_news_fetch).seconds > 900):
-                print("Fetching news events from Finnhub...")
-                news_events = get_upcoming_news()
-                last_news_fetch = datetime.now()
-                print(f"Found {len(news_events)} upcoming high-impact news events")
-            
-            # Send news alerts if enabled
-            if ENABLE_NEWS_ALERTS:
-                now = datetime.now(timezone.utc)
-                for event in news_events:
-                    event_id = f"{event['event']}_{event['time'].timestamp()}"
-                    
-                    # Skip if already alerted
-                    if event_id in alerted_events:
-                        continue
+            try:  # Added main loop error handler
+                # Refresh news every 15 minutes
+                if ENABLE_NEWS_ALERTS and (last_news_fetch is None or 
+                                         (datetime.now() - last_news_fetch).seconds > 900):
+                    print("Fetching news events from Finnhub...")
+                    news_events = get_upcoming_news()
+                    last_news_fetch = datetime.now()
+                    print(f"Found {len(news_events)} upcoming high-impact news events")
+                
+                # Send news alerts if enabled
+                if ENABLE_NEWS_ALERTS:
+                    now = datetime.now(timezone.utc)
+                    for event in news_events:
+                        event_id = f"{event['event']}_{event['time'].timestamp()}"
                         
-                    # Check if event is within alert window
-                    alert_time = event['time'] - timedelta(minutes=NEWS_ALERT_BUFFER)
-                    if now >= alert_time:
-                        print(f"⚠️ High-impact news event upcoming: {event['event']}")
-                        if send_news_alert(driver, wait, event):
-                            print(f"✅ News alert sent for: {event['event']}")
-                            alerted_events.add(event_id)
-            
-            # Get all available symbols
-            all_symbols = [s.name for s in mt5.symbols_get()]
-            
-            # Apply symbol filter
-            if USE_SYMBOL_FILTER:
-                symbols = [s for s in SYMBOL_LIST if s in all_symbols]
-            else:
-                symbols = [s for s in all_symbols if "USD" in s or "XAU" in s]
+                        # Skip if already alerted
+                        if event_id in alerted_events:
+                            continue
+                            
+                        # Check if event is within alert window
+                        alert_time = event['time'] - timedelta(minutes=NEWS_ALERT_BUFFER)
+                        if now >= alert_time:
+                            print(f"⚠️ High-impact news event upcoming: {event['event']}")
+                            if send_news_alert(driver, wait, event):
+                                print(f"✅ News alert sent for: {event['event']}")
+                                alerted_events.add(event_id)
                 
-            print(f"Scanning {len(symbols)} symbols...")
-            
-            debug_symbol = random.choice(symbols) if TEST_MODE and symbols else None
-            
-            for sym in symbols:
-                if sym in tracked and tracked[sym].get('status') == "open" and not tracked[sym].get('simulated', False):
-                    continue
+                # Get all available symbols
+                all_symbols = [s.name for s in mt5.symbols_get()]
                 
-                rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+50)
-                if rates is None or len(rates) < DONCHIAN_PERIOD+10:
-                    continue
-                
-                df = pd.DataFrame(rates)
-                df['time'] = pd.to_datetime(df['time'], unit='s')
-                up, low = get_donchian(df)
-                macd, sig, hist = get_macd_sig_hist(df)
-                
-                last = df['close'].iloc[-1]
-                curr_hist = hist.iloc[-1]
-                high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
-                low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
-                
-                if TEST_MODE and sym == debug_symbol:
-                    print(f"\n[DEBUG] {sym}:")
-                    print(f"  Last: {last:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
-                    print(f"  MACD Histogram: {curr_hist:.5f}")
-                    print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
-                
-                # Signal detection
-                direction = None
-                if last >= up.iloc[-1] and curr_hist < 0:
-                    direction = "SELL"
-                    price = mt5.symbol_info_tick(sym).bid
-                elif last <= low.iloc[-1] and curr_hist > 0:
-                    direction = "BUY"
-                    price = mt5.symbol_info_tick(sym).ask
-                
-                if direction:
-                    tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
-                    tid = gen_id(sym)
-                    msg = build_msg(sym, direction, price, tps, sl, tid)
-                    print(f"Signal detected for {sym} {direction}")
+                # Apply symbol filter
+                if USE_SYMBOL_FILTER:
+                    symbols = [s for s in SYMBOL_LIST if s in all_symbols]
+                else:
+                    symbols = [s for s in all_symbols if "USD" in s or "XAU" in s]
                     
-                    for attempt in range(3):
-                        if send_whatsapp_message(driver, wait, msg):
-                            tracked[sym] = {
-                                "id": tid, 
-                                "symbol": sym, 
-                                "dir": direction,
-                                "entry": price, 
-                                "tps": tps, 
-                                "sl": sl,
-                                "status": "open", 
-                                "hit": [],
-                                "high_touch": high_touch,
-                                "low_touch": low_touch
-                            }
-                            save_trades(tracked)
-                            print(f"✅ Signal sent for {sym} {direction}")
-                            break
-                        print(f"Retrying message send ({attempt+1}/3)...")
-                        time.sleep(3)
-                    else:
-                        print(f"❌ Failed to send signal for {sym} after 3 attempts")
-            
-            # Trade monitoring
-            print("Monitoring open trades...")
-            for sym, tr in list(tracked.items()):
-                if tr.get('status') != "open":
-                    continue
-                if not TEST_MODE and tr.get('simulated', False):
-                    continue
+                print(f"Scanning {len(symbols)} symbols...")
                 
-                tick = mt5.symbol_info_tick(sym)
-                if not tick:
-                    continue
+                debug_symbol = random.choice(symbols) if TEST_MODE and symbols else None
+                
+                for sym in symbols:
+                    if sym in tracked and tracked[sym].get('status') == "open" and not tracked[sym].get('simulated', False):
+                        continue
                     
-                price = tick.bid if tr['dir'] == "SELL" else tick.ask
+                    rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+50)
+                    if rates is None or len(rates) < DONCHIAN_PERIOD+10:
+                        continue
+                    
+                    df = pd.DataFrame(rates)
+                    df['time'] = pd.to_datetime(df['time'], unit='s')
+                    up, low = get_donchian(df)
+                    macd, sig, hist = get_macd_sig_hist(df)
+                    
+                    last = df['close'].iloc[-1]
+                    curr_hist = hist.iloc[-1]
+                    high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
+                    low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
+                    
+                    if TEST_MODE and sym == debug_symbol:
+                        print(f"\n[DEBUG] {sym}:")
+                        print(f"  Last: {last:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
+                        print(f"  MACD Histogram: {curr_hist:.5f}")
+                        print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
+                    
+                    # Signal detection
+                    direction = None
+                    if last >= up.iloc[-1] and curr_hist < 0:
+                        direction = "SELL"
+                        price = mt5.symbol_info_tick(sym).bid
+                    elif last <= low.iloc[-1] and curr_hist > 0:
+                        direction = "BUY"
+                        price = mt5.symbol_info_tick(sym).ask
+                    
+                    if direction:
+                        tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
+                        tid = gen_id(sym)
+                        msg = build_msg(sym, direction, price, tps, sl, tid)
+                        print(f"Signal detected for {sym} {direction}")
+                        
+                        for attempt in range(3):
+                            if send_whatsapp_message(driver, wait, msg):
+                                tracked[sym] = {
+                                    "id": tid, 
+                                    "symbol": sym, 
+                                    "dir": direction,
+                                    "entry": price, 
+                                    "tps": tps, 
+                                    "sl": sl,
+                                    "status": "open", 
+                                    "hit": [],
+                                    "high_touch": high_touch,
+                                    "low_touch": low_touch
+                                }
+                                save_trades(tracked)
+                                print(f"✅ Signal sent for {sym} {direction}")
+                                break
+                            print(f"Retrying message send ({attempt+1}/3)...")
+                            time.sleep(3)
+                        else:
+                            print(f"❌ Failed to send signal for {sym} after 3 attempts")
                 
-                # Check TP hits
-                for i, tp in enumerate(tr['tps']):
-                    if tp not in tr['hit']:
-                        if (tr['dir'] == "BUY" and price >= tp) or (tr['dir'] == "SELL" and price <= tp):
-                            tr['hit'].append(tp)
-                            event = f"TP{i+1} hit @ {tp}"
-                            print(f"✅ {sym} {event}")
-                            send_trade_update(driver, wait, sym, "TP_HIT", event, tr['id'])
-                            log_trade_performance(sym, tr['dir'], tr['entry'], tp, 
-                                                f"TP{i+1}", abs(tp - tr['entry']), 
-                                                tr['id'], tr['high_touch'], tr['low_touch'])
+                # Trade monitoring - FIXED SECTION
+                print("Monitoring open trades...")
+                for sym, tr in list(tracked.items()):
+                    try:  # Added per-trade error handler
+                        if tr.get('status') != "open":
+                            continue
+                        if not TEST_MODE and tr.get('simulated', False):
+                            continue
+                        
+                        # Safely get values with defaults
+                        high_touch = tr.get('high_touch', 0)
+                        low_touch = tr.get('low_touch', 0)
+                        tr.setdefault('hit', [])  # Ensure hit list exists
+
+                        tick = mt5.symbol_info_tick(sym)
+                        if not tick:
+                            continue
+                            
+                        price = tick.bid if tr['dir'] == "SELL" else tick.ask
+                        
+                        # Check TP hits
+                        for i, tp in enumerate(tr['tps']):
+                            if tp not in tr['hit']:
+                                if (tr['dir'] == "BUY" and price >= tp) or (tr['dir'] == "SELL" and price <= tp):
+                                    tr['hit'].append(tp)
+                                    event = f"TP{i+1} hit @ {tp}"
+                                    print(f"✅ {sym} {event}")
+                                    send_trade_update(driver, wait, sym, "TP_HIT", event, tr['id'])
+                                    log_trade_performance(sym, tr['dir'], tr['entry'], tp, 
+                                                        f"TP{i+1}", abs(tp - tr['entry']), 
+                                                        tr['id'], high_touch, low_touch)
+                        
+                        # Check SL hit
+                        if (tr['dir'] == "BUY" and price <= tr['sl']) or (tr['dir'] == "SELL" and price >= tr['sl']):
+                            tr['status'] = "closed-sl"
+                            event = f"SL hit @ {tr['sl']}"
+                            print(f"🛑 {sym} {event}")
+                            send_trade_update(driver, wait, sym, "SL_HIT", event, tr['id'])
+                            log_trade_performance(sym, tr['dir'], tr['entry'], tr['sl'], 
+                                                "SL", -abs(tr['sl'] - tr['entry']), 
+                                                tr['id'], high_touch, low_touch)
+                        
+                        # Check all TPs hit
+                        if len(tr['hit']) == len(tr['tps']):
+                            tr['status'] = "closed-tp4"
+                            print(f"🏁 {sym} All TPs reached")
+                            send_trade_update(driver, wait, sym, "ALL_TP", "", tr['id'])
+                            log_trade_performance(sym, tr['dir'], tr['entry'], tr['tps'][-1], 
+                                                "ALL_TP", abs(tr['tps'][-1] - tr['entry']), 
+                                                tr['id'], high_touch, low_touch)
+                    
+                    except Exception as trade_error:
+                        print(f"⚠️ Error processing trade {sym}: {trade_error}")
+                        import traceback
+                        traceback.print_exc()
                 
-                # Check SL hit
-                if (tr['dir'] == "BUY" and price <= tr['sl']) or (tr['dir'] == "SELL" and price >= tr['sl']):
-                    tr['status'] = "closed-sl"
-                    event = f"SL hit @ {tr['sl']}"
-                    print(f"🛑 {sym} {event}")
-                    send_trade_update(driver, wait, sym, "SL_HIT", event, tr['id'])
-                    log_trade_performance(sym, tr['dir'], tr['entry'], tr['sl'], 
-                                         "SL", -abs(tr['sl'] - tr['entry']), 
-                                         tr['id'], tr['high_touch'], tr['low_touch'])
-                
-                # Check all TPs hit
-                if len(tr.get('hit', [])) == len(tr['tps']):
-                    tr['status'] = "closed-tp4"
-                    print(f"🏁 {sym} All TPs reached")
-                    send_trade_update(driver, wait, sym, "ALL_TP", "", tr['id'])
-                    log_trade_performance(sym, tr['dir'], tr['entry'], tr['tps'][-1], 
-                                         "ALL_TP", abs(tr['tps'][-1] - tr['entry']), 
-                                         tr['id'], tr['high_touch'], tr['low_touch'])
+                save_trades(tracked)
+                print(f"Cycle complete at {datetime.now().strftime('%H:%M:%S')}, sleeping for 30 seconds...")
+                time.sleep(30)
             
-            save_trades(tracked)
-            print(f"Cycle complete at {datetime.now().strftime('%H:%M:%S')}, sleeping for 30 seconds...")
-            time.sleep(30)
+            except Exception as loop_error:
+                print(f"⚠️ Error in main loop: {loop_error}")
+                import traceback
+                traceback.print_exc()
+                time.sleep(30)  # Wait before continuing
             
     except KeyboardInterrupt:
         print("\nShutting down by user request...")
