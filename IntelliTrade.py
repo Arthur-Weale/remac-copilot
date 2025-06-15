@@ -13,24 +13,51 @@ import time
 import os
 import logging
 import pyperclip
-import win32clipboard  # For Windows clipboard access
-from datetime import datetime
+import win32clipboard
+import csv
+import requests
+from datetime import datetime, timedelta, timezone
 
 # ===== TESTING CONFIG =====
 TEST_MODE = False  # Set to False in production
 # ==========================
 
+# ===== ASSET FILTER CONFIG =====
+USE_SYMBOL_FILTER = False  # Set to False to monitor all USD/XAU symbols
+SYMBOL_LIST = ["Volatility 10 Index",
+    "Volatility 25 Index",
+    "Volatility 50 Index",
+    "Volatility 75 Index",
+    "Volatility 100 Index",
+    "Volatility 10 (1s) Index",
+    "Volatility 25 (1s) Index",
+    "Volatility 50 (1s) Index",
+    "Volatility 75 (1s) Index",
+    "Volatility 100 (1s) Index",
+    "Jump 10 Index",
+    "Jump 25 Index",
+    "Jump 50 Index",
+    "Jump 75 Index",
+    "Jump 100 Index",
+    "Step Index"]  # Your preferred symbols
+# ===============================
+
+# ===== NEWS FILTER CONFIG =====
+ENABLE_NEWS_ALERTS = True  # Set to True to receive news notifications
+NEWS_ALERT_BUFFER = 30  # Minutes before news to send alert
+FINNHUB_API_KEY = "d172u5pr01qkv5je79sgd172u5pr01qkv5je79t0"
+# ==============================
+
 # Suppress TensorFlow warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow info and warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
 # === WhatsApp SETUP ===
 WHATSAPP_TARGET = '"IntelliTrade"'
-# Create dedicated profile directory
 PROFILE_DIR = os.path.join(os.getcwd(), 'whatsapp_profile')
-os.makedirs(PROFILE_DIR, exist_ok=True)  # Ensure directory exists
+os.makedirs(PROFILE_DIR, exist_ok=True)
 
-# Chrome options with persistent profile
+# Chrome options
 CHROME_OPTIONS = [
     f"user-data-dir={PROFILE_DIR}",
     "--profile-directory=Default",
@@ -44,7 +71,7 @@ CHROME_OPTIONS = [
 CHROMEDRIVER_PATH = "chromedriver.exe"
 
 def setup_whatsapp():
-    """Initialize Chrome with persistent session handling and robust detection"""
+    """Initialize Chrome with persistent session handling"""
     try:
         print("Initializing Chrome with persistent profile...")
         service = Service(executable_path=CHROMEDRIVER_PATH)
@@ -63,27 +90,26 @@ def setup_whatsapp():
         driver.get("https://web.whatsapp.com/")
         print("✅ Chrome initialized successfully")
         
-        # Visual feedback for user
-        print("\n==================================================")
+        # Visual feedback
+        print("\n" + "="*50)
         print("WAITING FOR WHATSAPP LOGIN - PLEASE CHECK BROWSER")
-        print("==================================================")
+        print("="*50)
         print("1. If you see QR code, please scan it")
         print("2. If you're already logged in, do nothing")
         print("3. The script will automatically proceed after login")
-        print("==================================================\n")
+        print("="*50 + "\n")
         
-        # Wait for either login state or QR code with extended timeout
+        # Wait for login state
         start_time = time.time()
-        timeout = 240  # 4 minutes
+        timeout = 240
         logged_in = False
         
         while time.time() - start_time < timeout:
             try:
-                # Debug: print current URL and page title
                 print(f"Current URL: {driver.current_url}")
                 print(f"Page title: {driver.title}")
                 
-                # Check if we're logged in by multiple methods
+                # Login detection logic
                 logged_in_selectors = [
                     ("div[data-testid='chat-list']", "chat list"),
                     ("div[title='Type a message']", "message input"),
@@ -102,7 +128,7 @@ def setup_whatsapp():
                 if logged_in:
                     break
                     
-                # Check for QR code with multiple selectors
+                # QR code detection
                 qr_selectors = [
                     ("canvas[aria-label='Scan me!']", "QR code canvas"),
                     ("div[data-ref]", "QR code container"),
@@ -113,11 +139,8 @@ def setup_whatsapp():
                 for selector, description in qr_selectors:
                     if len(driver.find_elements(By.CSS_SELECTOR, selector)) > 0:
                         print(f"⚠️ Detected {description} - please scan to login")
-                        
-                        # Wait for login to complete after scanning
                         scan_start = time.time()
-                        while time.time() - scan_start < 180:  # 3 minutes to scan
-                            # Check if we're now logged in
+                        while time.time() - scan_start < 180:
                             for login_selector, desc in logged_in_selectors:
                                 if len(driver.find_elements(By.CSS_SELECTOR, login_selector)) > 0:
                                     print(f"✅ Login detected after QR scan ({desc})")
@@ -125,7 +148,6 @@ def setup_whatsapp():
                                     break
                             if logged_in:
                                 break
-                                
                             print("Waiting for QR scan to complete...")
                             time.sleep(5)
                         break
@@ -133,7 +155,7 @@ def setup_whatsapp():
                 if logged_in:
                     break
                     
-                # Check for loading spinner
+                # Loading states
                 loading_selectors = [
                     "div[data-testid='loading-screen']",
                     "div[aria-label='Loading...']",
@@ -147,7 +169,7 @@ def setup_whatsapp():
                         time.sleep(5)
                         continue
                 
-                # Check for error messages
+                # Error handling
                 error_selectors = [
                     "div[class*='error']",
                     "div[class*='exception']",
@@ -159,13 +181,12 @@ def setup_whatsapp():
                     elements = driver.find_elements(By.CSS_SELECTOR, selector)
                     if elements:
                         print(f"⚠️ Error detected: {elements[0].text[:100]}")
-                        # Suggest refresh
                         print("Attempting to refresh page...")
                         driver.refresh()
                         time.sleep(5)
                         break
                 
-                # No recognizable elements found
+                # Unrecognized state
                 print("⚠️ Unrecognized screen state - saving screenshot")
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 screenshot_name = f'whatsapp_unknown_{timestamp}.png'
@@ -178,13 +199,10 @@ def setup_whatsapp():
                 time.sleep(5)
             
         if not logged_in:
-            # Save screenshot for debugging
             driver.save_screenshot('whatsapp_timeout.png')
             print("❌ WhatsApp login detection timed out after 4 minutes")
-            print("Saved screenshot as 'whatsapp_timeout.png'")
             raise RuntimeError("WhatsApp login detection timed out")
         
-        # Create WebDriverWait instance
         wait = WebDriverWait(driver, 30)
         print("✅ WhatsApp login successful")
         return driver, wait
@@ -231,6 +249,92 @@ def save_trades(trades):
 def gen_id(sym): 
     return f"{sym}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
+# === NEWS ALERTS ===
+def get_upcoming_news():
+    """Fetch upcoming high-impact news events from Finnhub"""
+    try:
+        # Get current time range (now to +1 day)
+        now = datetime.now(timezone.utc)
+        start_date = now.strftime('%Y-%m-%d')
+        end_date = (now + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Fetch economic calendar
+        url = f"https://finnhub.io/api/v1/calendar/economic?from={start_date}&to={end_date}&token={FINNHUB_API_KEY}"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code != 200:
+            print(f"❌ News API error: {response.status_code}")
+            return []
+            
+        events = response.json().get('economicCalendar', [])
+        
+        # Filter for high-impact events
+        high_impact_events = [
+            event for event in events 
+            if event.get('impact') == 'high' and event.get('time') is not None
+        ]
+        
+        # Convert timestamps to datetime objects
+        for event in high_impact_events:
+            event['time'] = datetime.fromtimestamp(event['time'], tz= timezone.utc)
+        
+        return high_impact_events
+    
+    except Exception as e:
+        print(f"❌ Failed to fetch news: {e}")
+        return []
+
+def send_news_alert(driver, wait, event):
+    """Send news alert notification via WhatsApp"""
+    try:
+        # Format the news event
+        event_time = event['time'].strftime('%Y-%m-%d %H:%M UTC')
+        message = f"""
+🚨 Economic News Alert
+━━━━━━━━━━━━━━━━━━━━━━
+📅 Event: {event['event']}
+⏰ Time: {event_time}
+🌐 Country: {event['country']}
+💱 Currency: {event['currency']}
+📊 Impact: High
+━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ {event.get('description', 'No description available')}
+━━━━━━━━━━━━━━━━━━━━━━
+💡 _Monitor market volatility_
+"""
+        return send_whatsapp_message(driver, wait, message)
+    except Exception as e:
+        print(f"❌ Failed to send news alert: {e}")
+        return False
+
+# === TRADE LOGGING ===
+def log_trade_performance(symbol, direction, entry, exit_price, outcome, pips, tid, high_touch, low_touch):
+    """Log trade performance to CSV"""
+    filename = f"trade_performance_{symbol}.csv"
+    file_exists = os.path.isfile(filename)
+    
+    with open(filename, 'a', newline='') as f:
+        fieldnames = [
+            'Timestamp', 'TradeID', 'Direction', 'Entry', 'Exit', 
+            'Outcome', 'Pips', 'HighTouch', 'LowTouch'
+        ]
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        
+        if not file_exists:
+            writer.writeheader()
+        
+        writer.writerow({
+            'Timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+            'TradeID': tid,
+            'Direction': direction,
+            'Entry': entry,
+            'Exit': exit_price,
+            'Outcome': outcome,
+            'Pips': pips,
+            'HighTouch': high_touch,
+            'LowTouch': low_touch
+        })
+
 # === INDICATORS ===
 def get_macd_sig_hist(df):
     macd = df['close'].ewm(span=MACD_FAST, adjust=False).mean() - df['close'].ewm(span=MACD_SLOW, adjust=False).mean()
@@ -248,26 +352,23 @@ def calc_tps_sl(entry, direction, high_touch, low_touch):
     
     For BUY:
     - Start: Previous high that touched upper band (high_touch)
-    - End: Current low that touched lower band (low_touch)
-    - Profit targets: Extensions below high_touch
+    - Profit targets: Extensions ABOVE start point
     
     For SELL:
     - Start: Previous low that touched lower band (low_touch)
-    - End: Current high that touched upper band (high_touch)
-    - Profit targets: Extensions above low_touch
+    - Profit targets: Extensions BELOW start point
     """
     channel_height = abs(high_touch - low_touch)
     
     tps = []
     for lvl in FIB_LEVELS:
         if direction == "BUY":
-            # Extensions below high_touch
-            tp = high_touch - channel_height * (lvl/100)
-            tps.append(round(tp, 5))
+            # Extensions ABOVE high_touch
+            tp = high_touch + channel_height * (lvl/100)
         else:  # SELL
-            # Extensions above low_touch
-            tp = low_touch + channel_height * (lvl/100)
-            tps.append(round(tp, 5))
+            # Extensions BELOW low_touch
+            tp = low_touch - channel_height * (lvl/100)
+        tps.append(round(tp, 5))
     
     # Risk management
     risk_distance = abs(tps[0] - entry)
@@ -301,9 +402,39 @@ def build_msg(sym, dir, entry, tps, sl, tid, timeframe="M30"):
 🚀 _Powered by IntelliTrade Alpha Engine_
 """
 
+# === TRADE UPDATE MESSAGES ===
+def send_trade_update(driver, wait, symbol, event_type, details, tid):
+    """Send trade update notifications"""
+    time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+    
+    if event_type == "TP_HIT":
+        message = f"""
+📊 Trade Update: {symbol}
+⏰ Time: {time_str}
+✅ {details}
+🆔 Trade ID: {tid}
+"""
+    elif event_type == "SL_HIT":
+        message = f"""
+📊 Trade Update: {symbol}
+⏰ Time: {time_str}
+🛑 {details}
+🆔 Trade ID: {tid}
+"""
+    elif event_type == "ALL_TP":
+        message = f"""
+📊 Trade Update: {symbol}
+⏰ Time: {time_str}
+🏁 All Profit Targets Reached!
+🆔 Trade ID: {tid}
+"""
+    else:
+        return False
+    
+    return send_whatsapp_message(driver, wait, message)
+
 # === TEST FUNCTIONS ===
 def send_test_message(driver, wait):
-    """Send a test message to verify WhatsApp is working"""
     try:
         test_msg = "📈 IntelliTrade is online and monitoring markets!"
         print("Sending test message to WhatsApp...")
@@ -313,18 +444,15 @@ def send_test_message(driver, wait):
         return False
     
 def simulate_signal(driver, wait, tracked):
-    """Simulate a trade signal for testing purposes"""
     try:
-        # Use EURUSD for simulation
         sym = "EURUSD"
         direction = random.choice(["BUY", "SELL"])
         price = mt5.symbol_info_tick(sym).ask if direction == "BUY" else mt5.symbol_info_tick(sym).bid
         
-        # For simulation, create dummy Donchian bands
+        # For simulation
         current_upper = price * 1.005
         current_lower = price * 0.995
         
-        # Calculate TP/SL
         tps, sl = calc_tps_sl(price, direction, current_upper, current_lower)
         tid = gen_id(sym)
         msg = build_msg(sym, direction, price, tps, sl, tid)
@@ -334,9 +462,7 @@ def simulate_signal(driver, wait, tracked):
         print(f"TPs: {tps}")
         print(f"SL: {sl}\n")
         
-        # Send using our robust message sender
         if send_whatsapp_message(driver, wait, msg):
-            # Track the simulated trade
             tracked[sym] = {
                 "id": tid, 
                 "symbol": sym, 
@@ -346,7 +472,9 @@ def simulate_signal(driver, wait, tracked):
                 "sl": sl,
                 "status": "open", 
                 "hit": [],
-                "simulated": True  # Mark as simulated
+                "simulated": True,
+                "high_touch": current_upper,
+                "low_touch": current_lower
             }
             save_trades(tracked)
             print(f"✅ Simulated signal sent for {sym} {direction}")
@@ -356,22 +484,19 @@ def simulate_signal(driver, wait, tracked):
         print(f"❌ Failed to send simulated signal: {e}")
         return False
     
-# Update the message sending function
+# === MESSAGE SENDING ===
 def send_whatsapp_message(driver, wait, message):
-    """Robust method to send WhatsApp messages using clipboard"""
     max_attempts = 3
     for attempt in range(max_attempts):
         try:
             print(f"\nAttempt {attempt+1}/{max_attempts} to send message")
             
-            # Find target chat
             chat_css = f"span[title={WHATSAPP_TARGET}]"
             group_title = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, chat_css)))
             group_title.click()
             print("✅ Found and clicked target chat")
-            time.sleep(1)  # Allow chat to load
+            time.sleep(1)
             
-            # Find message input box
             input_selectors = [
                 "div[contenteditable='true'][title='Type a message']",
                 "div[contenteditable='true'][data-tab='10']",
@@ -390,28 +515,21 @@ def send_whatsapp_message(driver, wait, message):
             if not input_box:
                 raise RuntimeError("Could not find message input box")
             
-            # Clear input
             input_box.clear()
             print("Cleared input box")
             
-            # Copy message to clipboard
             try:
                 pyperclip.copy(message)
             except:
-                # Fallback for Windows
                 win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
                 win32clipboard.SetClipboardText(message)
                 win32clipboard.CloseClipboard()
             
             print("📋 Copied message to clipboard")
-            
-            # Paste from clipboard
             input_box.send_keys(Keys.CONTROL, 'v')
             print("📋 Pasted message from clipboard")
-            time.sleep(1)  # Allow paste to complete
-            
-            # Send the message
+            time.sleep(1)
             input_box.send_keys(Keys.ENTER)
             print("✅ Message sent successfully")
             return True
@@ -422,8 +540,6 @@ def send_whatsapp_message(driver, wait, message):
             screenshot_name = f'message_error_{timestamp}.png'
             driver.save_screenshot(screenshot_name)
             print(f"Saved screenshot as '{screenshot_name}'")
-            
-            # Refresh page before retrying
             driver.refresh()
             time.sleep(5)
     
@@ -432,105 +548,120 @@ def send_whatsapp_message(driver, wait, message):
 
 # === MAIN EXECUTION ===
 if __name__ == "__main__":
-    # Initialize MT5
     print("Initializing MT5...")
     if not mt5.initialize(path=MT5_PATH):
         print("MT5 initialization failed, retrying in 30 seconds...")
         time.sleep(30)
         if not mt5.initialize(path=MT5_PATH):
             raise RuntimeError("Failed to initialize MT5")
-    
     print("MT5 initialized successfully")
     
-    # Initialize WhatsApp
     print("Initializing WhatsApp...")
     driver, wait = setup_whatsapp()
     print("WhatsApp setup complete")
     
-    # ===== TEST SECTION 1: Online Notification =====
     if TEST_MODE:
-        # Try sending test message multiple times
         for i in range(3):
             if send_test_message(driver, wait):
                 break
             print(f"Retrying test message ({i+1}/3)...")
             time.sleep(5)
-    # ===============================================
     
     tracked = load_trades()
     print(f"Loaded {len(tracked)} tracked trades")
     
-    # ===== TEST SECTION 2: Simulate Signal =====
     if TEST_MODE and not tracked:
         if simulate_signal(driver, wait, tracked):
             print("Sleeping 10 seconds to verify message...")
             time.sleep(10)
-    # ===========================================
+    
+    # Cache for news events and alerts
+    last_news_fetch = None
+    news_events = []
+    alerted_events = set()  # Track events we've already alerted about
     
     try:
         while True:
-            symbols = [s.name for s in mt5.symbols_get() if "USD" in s.name or "XAU" in s.name]
+            # Refresh news every 15 minutes
+            if ENABLE_NEWS_ALERTS and (last_news_fetch is None or 
+                                     (datetime.now() - last_news_fetch).seconds > 900):
+                print("Fetching news events from Finnhub...")
+                news_events = get_upcoming_news()
+                last_news_fetch = datetime.now()
+                print(f"Found {len(news_events)} upcoming high-impact news events")
+            
+            # Send news alerts if enabled
+            if ENABLE_NEWS_ALERTS:
+                now = datetime.now(timezone.utc)
+                for event in news_events:
+                    event_id = f"{event['event']}_{event['time'].timestamp()}"
+                    
+                    # Skip if already alerted
+                    if event_id in alerted_events:
+                        continue
+                        
+                    # Check if event is within alert window
+                    alert_time = event['time'] - timedelta(minutes=NEWS_ALERT_BUFFER)
+                    if now >= alert_time:
+                        print(f"⚠️ High-impact news event upcoming: {event['event']}")
+                        if send_news_alert(driver, wait, event):
+                            print(f"✅ News alert sent for: {event['event']}")
+                            alerted_events.add(event_id)
+            
+            # Get all available symbols
+            all_symbols = [s.name for s in mt5.symbols_get()]
+            
+            # Apply symbol filter
+            if USE_SYMBOL_FILTER:
+                symbols = [s for s in SYMBOL_LIST if s in all_symbols]
+            else:
+                symbols = [s for s in all_symbols if "USD" in s or "XAU" in s]
+                
             print(f"Scanning {len(symbols)} symbols...")
             
-            # ===== TEST SECTION 3: Debug Output =====
             debug_symbol = random.choice(symbols) if TEST_MODE and symbols else None
-            # ========================================
             
             for sym in symbols:
-                # Skip if we have an open trade for this symbol (unless simulated)
                 if sym in tracked and tracked[sym].get('status') == "open" and not tracked[sym].get('simulated', False):
                     continue
                 
-                # Fetch rates
                 rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+50)
                 if rates is None or len(rates) < DONCHIAN_PERIOD+10:
                     continue
                 
-                # Process data
                 df = pd.DataFrame(rates)
                 df['time'] = pd.to_datetime(df['time'], unit='s')
                 up, low = get_donchian(df)
                 macd, sig, hist = get_macd_sig_hist(df)
                 
-                # Get last values
                 last = df['close'].iloc[-1]
                 curr_hist = hist.iloc[-1]
-                
-                # Get actual high/low that touched the bands
                 high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
                 low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
                 
-                # ===== TEST SECTION 4: Debug Output =====
                 if TEST_MODE and sym == debug_symbol:
                     print(f"\n[DEBUG] {sym}:")
                     print(f"  Last: {last:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
                     print(f"  MACD Histogram: {curr_hist:.5f}")
                     print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
-                # ========================================
                 
-                # Check for signal using your exact methodology
+                # Signal detection
                 direction = None
-                # For SELL: Price touches upper band AND histogram is below signal line (negative)
                 if last >= up.iloc[-1] and curr_hist < 0:
                     direction = "SELL"
                     price = mt5.symbol_info_tick(sym).bid
-                # For BUY: Price touches lower band AND histogram is above signal line (positive)
                 elif last <= low.iloc[-1] and curr_hist > 0:
                     direction = "BUY"
                     price = mt5.symbol_info_tick(sym).ask
                 
-                # Generate and send signal if found
                 if direction:
-                    # Calculate Fibonacci-based TPs and SL using actual touches
                     tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
                     tid = gen_id(sym)
                     msg = build_msg(sym, direction, price, tps, sl, tid)
                     print(f"Signal detected for {sym} {direction}")
                     
-                    # Send WhatsApp message with retries
                     for attempt in range(3):
                         if send_whatsapp_message(driver, wait, msg):
-                            # Track the trade
                             tracked[sym] = {
                                 "id": tid, 
                                 "symbol": sym, 
@@ -540,8 +671,8 @@ if __name__ == "__main__":
                                 "sl": sl,
                                 "status": "open", 
                                 "hit": [],
-                                "high_touch": high_touch,  # Store for reference
-                                "low_touch": low_touch     # Store for reference
+                                "high_touch": high_touch,
+                                "low_touch": low_touch
                             }
                             save_trades(tracked)
                             print(f"✅ Signal sent for {sym} {direction}")
@@ -551,43 +682,53 @@ if __name__ == "__main__":
                     else:
                         print(f"❌ Failed to send signal for {sym} after 3 attempts")
             
-            # Monitor open trades
+            # Trade monitoring
             print("Monitoring open trades...")
             for sym, tr in list(tracked.items()):
                 if tr.get('status') != "open":
                     continue
-                
-                # Skip simulated trades in production
                 if not TEST_MODE and tr.get('simulated', False):
                     continue
                 
-                # Get current price
                 tick = mt5.symbol_info_tick(sym)
                 if not tick:
                     continue
                     
                 price = tick.bid if tr['dir'] == "SELL" else tick.ask
                 
-                # Check for TP hits
+                # Check TP hits
                 for i, tp in enumerate(tr['tps']):
                     if tp not in tr['hit']:
                         if (tr['dir'] == "BUY" and price >= tp) or (tr['dir'] == "SELL" and price <= tp):
                             tr['hit'].append(tp)
-                            print(f"✅ {sym} TP{i+1} hit @ {tp}")
+                            event = f"TP{i+1} hit @ {tp}"
+                            print(f"✅ {sym} {event}")
+                            send_trade_update(driver, wait, sym, "TP_HIT", event, tr['id'])
+                            log_trade_performance(sym, tr['dir'], tr['entry'], tp, 
+                                                f"TP{i+1}", abs(tp - tr['entry']), 
+                                                tr['id'], tr['high_touch'], tr['low_touch'])
                 
-                # Check for SL hit
+                # Check SL hit
                 if (tr['dir'] == "BUY" and price <= tr['sl']) or (tr['dir'] == "SELL" and price >= tr['sl']):
                     tr['status'] = "closed-sl"
-                    print(f"🛑 {sym} SL hit @ {tr['sl']}")
+                    event = f"SL hit @ {tr['sl']}"
+                    print(f"🛑 {sym} {event}")
+                    send_trade_update(driver, wait, sym, "SL_HIT", event, tr['id'])
+                    log_trade_performance(sym, tr['dir'], tr['entry'], tr['sl'], 
+                                         "SL", -abs(tr['sl'] - tr['entry']), 
+                                         tr['id'], tr['high_touch'], tr['low_touch'])
                 
-                # Check if all TPs are hit
+                # Check all TPs hit
                 if len(tr.get('hit', [])) == len(tr['tps']):
                     tr['status'] = "closed-tp4"
                     print(f"🏁 {sym} All TPs reached")
+                    send_trade_update(driver, wait, sym, "ALL_TP", "", tr['id'])
+                    log_trade_performance(sym, tr['dir'], tr['entry'], tr['tps'][-1], 
+                                         "ALL_TP", abs(tr['tps'][-1] - tr['entry']), 
+                                         tr['id'], tr['high_touch'], tr['low_touch'])
             
             save_trades(tracked)
-            cycle_time = datetime.now().strftime('%H:%M:%S')
-            print(f"Cycle complete at {cycle_time}, sleeping for 30 seconds...")
+            print(f"Cycle complete at {datetime.now().strftime('%H:%M:%S')}, sleeping for 30 seconds...")
             time.sleep(30)
             
     except KeyboardInterrupt:
@@ -595,7 +736,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
     finally:
-        # Clean up resources
         print("Shutting down MT5...")
         mt5.shutdown()
         
