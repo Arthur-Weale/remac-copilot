@@ -24,22 +24,28 @@ TEST_MODE = False  # Set to False in production
 
 # ===== ASSET FILTER CONFIG =====
 USE_SYMBOL_FILTER = True # Set to False to monitor all USD/XAU symbols
-SYMBOL_LIST = ["Volatility 10 Index",
-    "Volatility 25 Index",
-    "Volatility 50 Index",
-    "Volatility 75 Index",
-    "Volatility 100 Index",
-    "Volatility 10 (1s) Index",
-    "Volatility 25 (1s) Index",
-    "Volatility 50 (1s) Index",
-    "Volatility 75 (1s) Index",
-    "Volatility 100 (1s) Index",
-    "Jump 10 Index",
-    "Jump 25 Index",
-    "Jump 50 Index",
-    "Jump 75 Index",
-    "Jump 100 Index",
-    "Step Index"]  # Your preferred symbols
+SYMBOL_LIST = [
+    # Volatility Indices
+    "Volatility 10 Index", "Volatility 25 Index", "Volatility 50 Index", 
+    "Volatility 75 Index", "Volatility 100 Index",
+    "Volatility 10 (1s) Index", "Volatility 25 (1s) Index", 
+    "Volatility 50 (1s) Index", "Volatility 75 (1s) Index", "Volatility 100 (1s) Index",
+    "Jump 10 Index", "Jump 25 Index", "Jump 50 Index", 
+    "Jump 75 Index", "Jump 100 Index",
+    "Step Index",
+    
+    # Forex
+    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD", "USDCAD",
+    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "CHFJPY", "NZDJPY",
+    "USDZAR", "USDTRY", "USDMXN", "USDSGD", "EURZAR", "USDSEK", "USDNOK",
+    
+    # Indices (common MT5 names)
+    "US30", "NAS100", "USTEC", "US100", "SPX500", "US500", "GER40", "DAX",
+    "UK100", "FRA40", "JPN225", "HK50", "AUS200", "STOXX50",
+    
+    # Commodities
+    "XAUUSD", "XAGUSD", "XAU/USD", "XAG/USD", "WTI", "BRENT", "NATURALGAS"
+]  # Your preferred symbols
 # ===============================
 
 # ===== NEWS FILTER CONFIG =====
@@ -221,18 +227,27 @@ FIB_LEVELS = [100, 161.8, 261.8, 423.6]
 RR = 3
 TRACK_FILE = "intellitrade_trades.json"
 
+# Strategy-agnostic reasons
 REASONS = [
-    "Reactive zone interaction aligned with macro flow indicator.",
-    "Price-action trigger supported by momentum divergence resolution.",
-    "Structural inflection respected with oscillator confirmation.",
-    "Dynamic range boundary interaction with trend alignment.",
-    "Volatility compression followed by directional momentum shift.",
-    "Liquidity zone engagement validated by momentum oscillator.",
-    "Trend filter confirmation at key market structure pivot.",
-    "Momentum oscillator crossover at critical price threshold.",
-    "Price structure test coupled with internal momentum validation.",
-    "Algorithmic trigger from volatility cluster and flow alignment."
+    "Strong momentum alignment detected in our analysis",
+    "System shows favorable risk-reward configuration",
+    "Quantitative models indicate high-probability setup",
+    "Market structure supports directional bias",
+    "Volatility conditions favorable for this approach",
+    "Price action confirms our algorithmic triggers",
+    "Timing models show optimal entry window",
+    "Liquidity profile supports trade thesis",
+    "System convergence on directional opportunity",
+    "Algorithmic edge detected in current market conditions"
 ]
+
+# Confidence levels for signals
+CONFIDENCE_LEVELS = {
+    1: "High Confidence",
+    2: "Medium Confidence",
+    3: "Very High Confidence",
+    4: "Caution Advised"
+}
 
 # === TRACKING ===
 def load_trades():
@@ -247,7 +262,7 @@ def save_trades(trades):
         json.dump(trades, f, indent=4)
 
 def gen_id(sym): 
-    return f"{sym}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    return f"{sym}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
 # === NEWS ALERTS ===
 def get_upcoming_news():
@@ -259,16 +274,16 @@ def get_upcoming_news():
         end_date = (now + timedelta(days=1)).strftime('%Y-%m-%d')
         
         # Fetch economic calendar
-        url = f"https://finnhub.io/api/v1/news?category=general&token={FINNHUB_API_KEY}"
+        url = f"https://finnhub.io/api/v1/calendar/economic?from={start_date}&to={end_date}&token={FINNHUB_API_KEY}"
         response = requests.get(url, timeout=10)
         
         if response.status_code != 200:
             print(f"❌ News API error: {response.status_code}")
             return []
             
-        events = response.json()
+        events = response.json().get('economicCalendar', [])
         
-        # Filter for high-impact event
+        # Filter for high-impact events
         high_impact_events = [
             event for event in events 
             if event.get('impact') == 'high' and event.get('time') is not None
@@ -276,7 +291,11 @@ def get_upcoming_news():
         
         # Convert timestamps to datetime objects
         for event in high_impact_events:
-            event['time'] = datetime.fromtimestamp(event['time'], tz= timezone.utc)
+            # Handle both integer and float timestamps
+            timestamp = event['time']
+            if isinstance(timestamp, float):
+                timestamp = int(timestamp)
+            event['time'] = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         
         return high_impact_events
     
@@ -307,9 +326,53 @@ def send_news_alert(driver, wait, event):
         print(f"❌ Failed to send news alert: {e}")
         return False
 
+# === PRICE VALIDATION ===
+def is_valid_price(price, symbol, last_close=None, threshold=0.05):
+    """Check if price is within expected range"""
+    if price <= 0:
+        return False
+        
+    # Check against last close if available
+    if last_close is not None:
+        if abs(price - last_close) > last_close * threshold:
+            return False
+            
+    return True
+
+def validate_prices(entry, tps, sl, direction, symbol, last_close):
+    """Ensure all prices make logical sense"""
+    # Validate entry price
+    if not is_valid_price(entry, symbol, last_close):
+        return False
+        
+    # Validate all TPs
+    for tp in tps:
+        if not is_valid_price(tp, symbol, last_close):
+            return False
+            
+    # Validate SL
+    if not is_valid_price(sl, symbol, last_close):
+        return False
+        
+    # Direction-specific validation
+    if direction == "BUY":
+        if any(tp <= entry for tp in tps) or sl >= entry:
+            return False
+    else:  # SELL
+        if any(tp >= entry for tp in tps) or sl <= entry:
+            return False
+            
+    return True
+
 # === TRADE LOGGING ===
 def log_trade_performance(symbol, direction, entry, exit_price, outcome, pips, tid, high_touch, low_touch):
     """Log trade performance to CSV"""
+    # Validate all prices before logging
+    for price in [entry, exit_price, high_touch, low_touch]:
+        if not is_valid_price(price, symbol):
+            print(f"⚠️ Invalid price {price} for {symbol} - skipping log")
+            return
+            
     filename = f"trade_performance_{symbol}.csv"
     file_exists = os.path.isfile(filename)
     
@@ -346,66 +409,100 @@ def get_donchian(df):
     low = df['low'].rolling(DONCHIAN_PERIOD).min()
     return up, low
 
+def get_rsi(df, period=14):
+    """Calculate RSI without revealing it in messages"""
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    
+    avg_gain = gain.rolling(period).mean()
+    avg_loss = loss.rolling(period).mean()
+    
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def calc_tps_sl(entry, direction, high_touch, low_touch):
-    """
-    Calculate Fibonacci profit targets based on actual Donchian band touches
-    
-    For BUY:
-    - Start: Previous high that touched upper band (high_touch)
-    - Profit targets: Extensions ABOVE start point
-    
-    For SELL:
-    - Start: Previous low that touched lower band (low_touch)
-    - Profit targets: Extensions BELOW start point
-    """
+    """Calculate realistic profit targets"""
+    # 1. Calculate volatility-adjusted channel height
     channel_height = abs(high_touch - low_touch)
     
+    # 2. Cap channel height at 5% of average price
+    avg_price = (high_touch + low_touch) / 2
+    max_allowed = avg_price * 0.05
+    channel_height = min(channel_height, max_allowed)
+    
+    # 3. Calculate proportional targets
     tps = []
     for lvl in FIB_LEVELS:
+        extension = channel_height * (lvl/100)
         if direction == "BUY":
-            # Extensions ABOVE high_touch
-            tp = high_touch + channel_height * (lvl/100)
+            tp = entry + extension
         else:  # SELL
-            # Extensions BELOW low_touch
-            tp = low_touch - channel_height * (lvl/100)
+            tp = entry - extension
         tps.append(round(tp, 5))
     
-    # Risk management
-    risk_distance = abs(tps[0] - entry)
+    # 4. Calculate SL based on TP1 distance
+    tp1_distance = abs(tps[0] - entry)
+    risk_distance = tp1_distance / RR
+    
     if direction == "BUY":
-        sl = round(entry - risk_distance * RR, 5)
+        sl = round(entry - risk_distance, 5)
     else:
-        sl = round(entry + risk_distance * RR, 5)
+        sl = round(entry + risk_distance, 5)
     
     return tps, sl
 
-def build_msg(sym, dir, entry, tps, sl, tid, timeframe="M30"):
-    time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+# === MESSAGE GENERATION ===
+def generate_signal_message(sym, direction, price, tps, sl, tid, confidence_level, timeframe="M30"):
+    """Generate signal message without strategy details"""
+    time_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
+    confidence = CONFIDENCE_LEVELS.get(confidence_level, "High Confidence")
+    
+    # Strategy-agnostic commentary
+    insight_comments = [
+        "Strong momentum alignment detected in our analysis",
+        "System shows favorable risk-reward configuration",
+        "Quantitative models indicate high-probability setup",
+        "Market structure supports directional bias"
+    ]
+    
+    # Generic market observations
+    market_context = [
+        "Volatility conditions favorable for this approach",
+        "Price action confirms our algorithmic triggers",
+        "Timing models show optimal entry window",
+        "Liquidity profile supports trade thesis"
+    ]
+    
     tp_lines = "\n".join([f"🎯 TP{i+1} → {tp}" for i, tp in enumerate(tps)])
-    return f"""
-📈 IntelliTrade Signal Alert  
+    
+    msg = f"""
+📈 IntelliTrade Signal Alert ({confidence})
 ━━━━━━━━━━━━━━━━━━━━━━  
 🔹 Asset: {sym}  
-📥 Direction: {dir}  
+📥 Direction: {direction}  
 🕒 Time: {time_str}  
 ⏳ Timeframe: {timeframe}  
 
-💵 Entry: {entry}  
+💵 Entry: {price}  
 {tp_lines}  
 🛑 Stop Loss: {sl}  
 🆔 Trade ID: {tid}  
 
 ━━━━━━━━━━━━━━━━━━━━━━  
 📊 Execution Insight:  
-{random.choice(REASONS)}  
+{random.choice(insight_comments)}  
+{random.choice(market_context)}  
 ━━━━━━━━━━━━━━━━━━━━━━  
 🚀 _Powered by IntelliTrade Alpha Engine_
 """
+    return msg
 
 # === TRADE UPDATE MESSAGES ===
 def send_trade_update(driver, wait, symbol, event_type, details, tid):
     """Send trade update notifications"""
-    time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+    time_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
     
     if event_type == "TP_HIT":
         message = f"""
@@ -433,6 +530,121 @@ def send_trade_update(driver, wait, symbol, event_type, details, tid):
     
     return send_whatsapp_message(driver, wait, message)
 
+def send_closure_advisory(driver, wait, symbol, entry, current_price, tid, direction):
+    """Send early closure advisory"""
+    pips = abs(round(current_price - entry, 5))
+    profit_status = "in profit" if ((direction == "BUY" and current_price > entry) or 
+                                   (direction == "SELL" and current_price < entry)) else "at risk"
+    
+    message = f"""
+⚠️ Trade Advisory: {symbol}
+━━━━━━━━━━━━━━━━━━━━━━
+Price has reached key opposing level
+Consider securing profits or tightening stops
+🕒 Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}
+🆔 Trade ID: {tid}
+
+Entry: {entry}
+Current: {current_price}
+Position status: {profit_status}
+
+💡 _Protecting gains is as important as making them_
+"""
+    return send_whatsapp_message(driver, wait, message)
+
+# === SPONTANEOUS MESSAGES ===
+def send_spontaneous_message(driver, wait):
+    """Send various spontaneous messages"""
+    now = datetime.now(timezone.utc)
+    
+    # Morning messages (6AM-10AM UTC)
+    if 6 <= now.hour <= 10:
+        msg = f"""
+☀️ Good Morning Traders!
+━━━━━━━━━━━━━━━━━━━━━━
+{random.choice([
+    "Markets are waking up - stay alert for opportunities",
+    "Fresh trading day ahead - review your watchlists",
+    "New session, new possibilities - trade with focus"
+])}
+"""
+        return send_whatsapp_message(driver, wait, msg)
+    
+    # Market session reminders
+    sessions = [
+        ("London Open", 7, "European pairs coming alive"),
+        ("New York Open", 12, "Volatility surge expected"),
+        ("Asian Open", 23, "Overnight positioning opportunities")
+    ]
+    
+    for session, hour, comment in sessions:
+        if now.hour == hour and now.minute < 15:
+            msg = f"""
+⏰ {session} Reminder
+━━━━━━━━━━━━━━━━━━━━━━
+{comment}
+{random.choice([
+    "Check your risk exposure",
+    "Monitor key technical levels",
+    "Prepare for potential breakouts"
+])}
+"""
+            return send_whatsapp_message(driver, wait, msg)
+    
+    # Motivational messages
+    if random.random() > 0.85:
+        msg = f"""
+💪 Trading Wisdom
+━━━━━━━━━━━━━━━━━━━━━━
+"{random.choice([
+    "Discipline separates winners from gamblers",
+    "The market rewards patience more than brilliance",
+    "Risk management isn't expensive - it's priceless"
+])}"
+"""
+        return send_whatsapp_message(driver, wait, msg)
+    
+    # Market status commentary
+    if random.random() > 0.9:
+        symbols = random.sample(SYMBOL_LIST, min(2, len(SYMBOL_LIST)))
+        comments = []
+        
+        for sym in symbols:
+            try:
+                # Get market data without revealing strategy
+                spread = mt5.symbol_info(sym).spread
+                day_range = mt5.symbol_info(sym).point * 10000
+                
+                comments.append(f"{sym}: Spread {'tightening' if spread < 15 else 'widening'}")
+                comments.append(f"{sym}: Daily range: {'expanding' if day_range > 70 else 'contracting'}")
+            except:
+                continue
+        
+        if comments:
+            msg = f"""
+📊 Market Pulse
+━━━━━━━━━━━━━━━━━━━━━━
+{"\n".join(comments)}
+"""
+            return send_whatsapp_message(driver, wait, msg)
+    
+    # Premium campaign (occasional)
+    if random.random() > 0.95:
+        msg = """
+💎 IntelliTrade Premium
+━━━━━━━━━━━━━━━━━━━━━━
+Elevate your trading with:
+• Real-time SMS trade alerts
+• Advanced position management tools
+• Priority market analysis
+
+🔐 Limited slots available
+👉 Learn more: intellitrade.com/premium
+"""
+        return send_whatsapp_message(driver, wait, msg)
+    
+    return False
+
 # === TEST FUNCTIONS ===
 def send_test_message(driver, wait):
     try:
@@ -445,7 +657,7 @@ def send_test_message(driver, wait):
     
 def simulate_signal(driver, wait, tracked):
     try:
-        sym = "EURUSD"
+        sym = "Volatility 25 Index"
         direction = random.choice(["BUY", "SELL"])
         price = mt5.symbol_info_tick(sym).ask if direction == "BUY" else mt5.symbol_info_tick(sym).bid
         
@@ -455,7 +667,7 @@ def simulate_signal(driver, wait, tracked):
         
         tps, sl = calc_tps_sl(price, direction, current_upper, current_lower)
         tid = gen_id(sym)
-        msg = build_msg(sym, direction, price, tps, sl, tid)
+        msg = generate_signal_message(sym, direction, price, tps, sl, tid, 1)
         
         print(f"\n=== TESTING: Simulating {direction} signal for {sym} ===")
         print(f"Entry: {price}")
@@ -546,6 +758,49 @@ def send_whatsapp_message(driver, wait, message):
     print(f"❌ Failed to send message after {max_attempts} attempts")
     return False
 
+# === CRITICAL FIXES ===
+def get_mt5_time(symbol):
+    """Get current time from MT5 server for a symbol"""
+    try:
+        tick = mt5.symbol_info_tick(symbol)
+        if tick:
+            return datetime.fromtimestamp(tick.time, tz=timezone.utc)
+    except:
+        pass
+    return datetime.now(timezone.utc)  # Fallback to system time
+
+def validate_signal(sym, direction, entry_price, tolerance=0.0005):
+    """Check if signal is still valid at execution time"""
+    try:
+        tick = mt5.symbol_info_tick(sym)
+        if not tick:
+            return False
+            
+        if direction == "BUY":
+            current_ask = tick.ask
+            # Allow 0.05% tolerance for execution
+            return current_ask <= entry_price * (1 + tolerance)
+        else:  # SELL
+            current_bid = tick.bid
+            return current_bid >= entry_price * (1 - tolerance)
+    except Exception as e:
+        print(f"❌ Signal validation failed for {sym}: {e}")
+        return False
+
+def is_data_fresh(symbol, current_time, max_age=120):
+    """Check if market data is fresh (within max_age seconds)"""
+    try:
+        # Get time of last tick
+        tick = mt5.symbol_info_tick(symbol)
+        if not tick:
+            return False
+            
+        # Calculate age of data
+        data_age = current_time.timestamp() - tick.time
+        return data_age <= max_age
+    except:
+        return False
+
 # === MAIN EXECUTION ===
 if __name__ == "__main__":
     print("Initializing MT5...")
@@ -579,16 +834,26 @@ if __name__ == "__main__":
     last_news_fetch = None
     news_events = []
     alerted_events = set()  # Track events we've already alerted about
+    last_session_update = None
+    
+    # Track last signal times per symbol
+    last_signal_times = {}
     
     try:
         while True:
-            try:  # Added main loop error handler
+            try:
+                current_utc_time = datetime.now(timezone.utc)
+                
+                # Send spontaneous messages (15% chance each cycle)
+                if random.random() > 0.85:
+                    send_spontaneous_message(driver, wait)
+                
                 # Refresh news every 15 minutes
                 if ENABLE_NEWS_ALERTS and (last_news_fetch is None or 
-                                         (datetime.now() - last_news_fetch).seconds > 900):
+                                         (current_utc_time - last_news_fetch).seconds > 900):
                     print("Fetching news events from Finnhub...")
                     news_events = get_upcoming_news()
-                    last_news_fetch = datetime.now()
+                    last_news_fetch = current_utc_time
                     print(f"Found {len(news_events)} upcoming high-impact news events")
                 
                 # Send news alerts if enabled
@@ -618,75 +883,134 @@ if __name__ == "__main__":
                 else:
                     symbols = [s for s in all_symbols if "USD" in s or "XAU" in s]
                     
-                print(f"Scanning {len(symbols)} symbols...")
+                # Filter out symbols with stale data
+                symbols = [s for s in symbols if is_data_fresh(s, current_utc_time)]
+                print(f"Scanning {len(symbols)} symbols with fresh data...")
                 
                 debug_symbol = random.choice(symbols) if TEST_MODE and symbols else None
                 
                 for sym in symbols:
-                    if sym in tracked and tracked[sym].get('status') == "open" and not tracked[sym].get('simulated', False):
-                        continue
-                    
-                    rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+50)
-                    if rates is None or len(rates) < DONCHIAN_PERIOD+10:
-                        continue
-                    
-                    df = pd.DataFrame(rates)
-                    df['time'] = pd.to_datetime(df['time'], unit='s')
-                    up, low = get_donchian(df)
-                    macd, sig, hist = get_macd_sig_hist(df)
-                    
-                    last = df['close'].iloc[-1]
-                    curr_hist = hist.iloc[-1]
-                    high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
-                    low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
-                    
-                    if TEST_MODE and sym == debug_symbol:
-                        print(f"\n[DEBUG] {sym}:")
-                        print(f"  Last: {last:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
-                        print(f"  MACD Histogram: {curr_hist:.5f}")
-                        print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
-                    
-                    # Signal detection
-                    direction = None
-                    if last >= up.iloc[-1] and curr_hist < 0:
-                        direction = "SELL"
-                        price = mt5.symbol_info_tick(sym).bid
-                    elif last <= low.iloc[-1] and curr_hist > 0:
-                        direction = "BUY"
-                        price = mt5.symbol_info_tick(sym).ask
-                    
-                    if direction:
-                        tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
-                        tid = gen_id(sym)
-                        msg = build_msg(sym, direction, price, tps, sl, tid)
-                        print(f"Signal detected for {sym} {direction}")
+                    try:
+                        # Skip if we've recently sent a signal for this symbol
+                        if sym in last_signal_times:
+                            time_since_last = (current_utc_time - last_signal_times[sym]).total_seconds()
+                            if time_since_last < 300:  # 5 minutes cooldown
+                                continue
                         
-                        for attempt in range(3):
-                            if send_whatsapp_message(driver, wait, msg):
-                                tracked[sym] = {
-                                    "id": tid, 
-                                    "symbol": sym, 
-                                    "dir": direction,
-                                    "entry": price, 
-                                    "tps": tps, 
-                                    "sl": sl,
-                                    "status": "open", 
-                                    "hit": [],
-                                    "high_touch": high_touch,
-                                    "low_touch": low_touch
-                                }
-                                save_trades(tracked)
-                                print(f"✅ Signal sent for {sym} {direction}")
-                                break
-                            print(f"Retrying message send ({attempt+1}/3)...")
-                            time.sleep(3)
-                        else:
-                            print(f"❌ Failed to send signal for {sym} after 3 attempts")
+                        # Skip if already has an open trade
+                        if sym in tracked and tracked[sym].get('status') == "open" and not tracked[sym].get('simulated', False):
+                            continue
+                        
+                        rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+50)
+                        if rates is None or len(rates) < DONCHIAN_PERIOD+10:
+                            continue
+                        
+                        df = pd.DataFrame(rates)
+                        df['time'] = pd.to_datetime(df['time'], unit='s')
+                        up, low = get_donchian(df)
+                        macd, sig, hist = get_macd_sig_hist(df)
+                        
+                        last = df['close'].iloc[-1]
+                        curr_hist = hist.iloc[-1]
+                        high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
+                        low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
+                        
+                        if TEST_MODE and sym == debug_symbol:
+                            print(f"\n[DEBUG] {sym}:")
+                            print(f"  Last: {last:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
+                            print(f"  MACD Histogram: {curr_hist:.5f}")
+                            print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
+                        
+                        # Signal detection with tiers
+                        signal_tier = 0
+                        direction = None
+                        
+                        # Tier 1: Donchian + MACD
+                        if last >= up.iloc[-1] and curr_hist < 0:
+                            direction = "SELL"
+                            signal_tier = 1
+                        elif last <= low.iloc[-1] and curr_hist > 0:
+                            direction = "BUY"
+                            signal_tier = 1
+                        
+                        # Tier 2: Donchian + RSI
+                        if not direction:
+                            rsi = get_rsi(df)
+                            if last >= up.iloc[-1] and rsi.iloc[-1] > 70:
+                                direction = "SELL"
+                                signal_tier = 2
+                            elif last <= low.iloc[-1] and rsi.iloc[-1] < 30:
+                                direction = "BUY"
+                                signal_tier = 2
+                        
+                        # Tier 3: All indicators
+                        if not direction:
+                            rsi = get_rsi(df)
+                            if (last >= up.iloc[-1] and curr_hist < 0 and rsi.iloc[-1] > 70):
+                                direction = "SELL"
+                                signal_tier = 3
+                            elif (last <= low.iloc[-1] and curr_hist > 0 and rsi.iloc[-1] < 30):
+                                direction = "BUY"
+                                signal_tier = 3
+                        
+                        if direction and signal_tier:
+                            # Get current tick price
+                            if direction == "BUY":
+                                price = mt5.symbol_info_tick(sym).ask
+                            else:
+                                price = mt5.symbol_info_tick(sym).bid
+                            
+                            # Skip if price validation fails
+                            if not is_valid_price(price, sym):
+                                print(f"⚠️ Invalid price for {sym} - skipping")
+                                continue
+                            
+                            # Calculate TP/SL
+                            tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
+                            
+                            # Validate prices before sending signal
+                            if not validate_prices(price, tps, sl, direction, sym, last):
+                                print(f"⚠️ Price validation failed for {sym} - skipping signal")
+                                continue
+                                
+                            # Validate signal is still relevant
+                            if not validate_signal(sym, direction, price):
+                                print(f"⚠️ Signal no longer valid for {sym} - skipping")
+                                continue
+                                
+                            tid = gen_id(sym)
+                            msg = generate_signal_message(sym, direction, price, tps, sl, tid, signal_tier)
+                            print(f"Signal detected for {sym} {direction} (Tier {signal_tier})")
+                            
+                            for attempt in range(3):
+                                if send_whatsapp_message(driver, wait, msg):
+                                    tracked[sym] = {
+                                        "id": tid, 
+                                        "symbol": sym, 
+                                        "dir": direction,
+                                        "entry": price, 
+                                        "tps": tps, 
+                                        "sl": sl,
+                                        "status": "open", 
+                                        "hit": [],
+                                        "high_touch": high_touch,
+                                        "low_touch": low_touch
+                                    }
+                                    save_trades(tracked)
+                                    last_signal_times[sym] = current_utc_time
+                                    print(f"✅ Signal sent for {sym} {direction}")
+                                    break
+                                print(f"Retrying message send ({attempt+1}/3)...")
+                                time.sleep(3)
+                            else:
+                                print(f"❌ Failed to send signal for {sym} after 3 attempts")
+                    except Exception as sym_error:
+                        print(f"⚠️ Error processing symbol {sym}: {sym_error}")
                 
-                # Trade monitoring - FIXED SECTION
+                # Trade monitoring
                 print("Monitoring open trades...")
                 for sym, tr in list(tracked.items()):
-                    try:  # Added per-trade error handler
+                    try:
                         if tr.get('status') != "open":
                             continue
                         if not TEST_MODE and tr.get('simulated', False):
@@ -702,6 +1026,28 @@ if __name__ == "__main__":
                             continue
                             
                         price = tick.bid if tr['dir'] == "SELL" else tick.ask
+                        
+                        # Check for early closure condition (opposite band touch)
+                        try:
+                            rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+10)
+                            if rates and len(rates) >= DONCHIAN_PERIOD:
+                                df = pd.DataFrame(rates)
+                                current_up = df['high'].rolling(DONCHIAN_PERIOD).max().iloc[-1]
+                                current_low = df['low'].rolling(DONCHIAN_PERIOD).min().iloc[-1]
+                                
+                                if tr['dir'] == "BUY" and price <= current_low:
+                                    if not tr.get('closure_advised', False):
+                                        if send_closure_advisory(driver, wait, sym, tr['entry'], price, tr['id'], tr['dir']):
+                                            tr['closure_advised'] = True
+                                            print(f"⚠️ Early closure advised for {sym}")
+                                
+                                elif tr['dir'] == "SELL" and price >= current_up:
+                                    if not tr.get('closure_advised', False):
+                                        if send_closure_advisory(driver, wait, sym, tr['entry'], price, tr['id'], tr['dir']):
+                                            tr['closure_advised'] = True
+                                            print(f"⚠️ Early closure advised for {sym}")
+                        except:
+                            pass
                         
                         # Check TP hits
                         for i, tp in enumerate(tr['tps']):
@@ -736,11 +1082,9 @@ if __name__ == "__main__":
                     
                     except Exception as trade_error:
                         print(f"⚠️ Error processing trade {sym}: {trade_error}")
-                        import traceback
-                        traceback.print_exc()
                 
                 save_trades(tracked)
-                print(f"Cycle complete at {datetime.now().strftime('%H:%M:%S')}, sleeping for 30 seconds...")
+                print(f"Cycle complete at {current_utc_time.strftime('%H:%M:%S')}, sleeping for 30 seconds...")
                 time.sleep(30)
             
             except Exception as loop_error:
