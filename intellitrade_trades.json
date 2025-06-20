@@ -1,1 +1,1386 @@
-{}
+{
+    "EURUSD": {
+        "id": "EURUSD_20250618224509",
+        "symbol": "EURUSD",
+        "dir": "BUY",
+        "entry": 1.14835,
+        "tps": [
+            1.1488,
+            1.14908,
+            1.14953,
+            1.15026
+        ],
+        "sl": 1.1482,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 1.14871,
+            "donchian_lower": 1.14826,
+            "macd_main": -6.737445975013578e-05,
+            "macd_signal": -3.725775920618201e-05,
+            "macd_hist": -3.0116700543953773e-05,
+            "rsi": 34.21286272499994,
+            "rsi_status": "Neutral",
+            "sma_9": 1.1483833333333333,
+            "sma_21": 1.1484757142857145,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "XMRUSD": {
+        "id": "XMRUSD_20250614223113",
+        "symbol": "XMRUSD",
+        "dir": "BUY",
+        "entry": 308.277,
+        "tps": [
+            311.35977,
+            313.26492,
+            316.34769,
+            321.33561
+        ],
+        "sl": 299.02869,
+        "status": "closed-tp4",
+        "hit": [
+            311.35977,
+            313.26492,
+            316.34769,
+            321.33561
+        ]
+    },
+    "FILUSD": {
+        "id": "FILUSD_20250614235748",
+        "symbol": "FILUSD",
+        "dir": "SELL",
+        "entry": 2.4,
+        "tps": [
+            2.42,
+            2.42,
+            2.42,
+            2.42
+        ],
+        "sl": 2.46,
+        "status": "closed-sl",
+        "hit": [
+            2.42
+        ],
+        "high_touch": 2.42,
+        "low_touch": 2.42
+    },
+    "IOTUSD": {
+        "id": "IOTUSD_20250614235328",
+        "symbol": "IOTUSD",
+        "dir": "SELL",
+        "entry": 0.1689,
+        "tps": [
+            0.169,
+            0.16943,
+            0.17013,
+            0.17127
+        ],
+        "sl": 0.1692,
+        "status": "closed-tp4",
+        "hit": [
+            0.169,
+            0.16943,
+            0.17013,
+            0.17127
+        ],
+        "high_touch": 0.169,
+        "low_touch": 0.1683
+    },
+    "FETUSD": {
+        "id": "FETUSD_20250615002103",
+        "symbol": "FETUSD",
+        "dir": "SELL",
+        "entry": 0.668,
+        "tps": [
+            0.67,
+            0.67124,
+            0.67324,
+            0.67647
+        ],
+        "sl": 0.674,
+        "status": "closed-tp4",
+        "hit": [
+            0.67,
+            0.67124,
+            0.67324,
+            0.67647
+        ],
+        "high_touch": 0.67,
+        "low_touch": 0.668
+    },
+    "APTUSD": {
+        "id": "APTUSD_20250615031249",
+        "symbol": "APTUSD",
+        "dir": "SELL",
+        "entry": 4.486,
+        "tps": [
+            4.491,
+            4.50151,
+            4.51851,
+            4.54601
+        ],
+        "sl": 4.501,
+        "status": "closed-tp4",
+        "hit": [
+            4.491,
+            4.50151,
+            4.51851,
+            4.54601
+        ],
+        "high_touch": 4.491,
+        "low_touch": 4.474
+    },
+    "APEUSD": {
+        "id": "APEUSD_20250615024015",
+        "symbol": "APEUSD",
+        "dir": "BUY",
+        "entry": 0.68,
+        "tps": [
+            0.676,
+            0.67476,
+            0.67276,
+            0.66953
+        ],
+        "sl": 0.668,
+        "status": "closed-tp4",
+        "hit": [
+            0.676,
+            0.67476,
+            0.67276,
+            0.66953
+        ],
+        "high_touch": 0.678,
+        "low_touch": 0.676
+    },
+    "ALGUSD": {
+        "id": "ALGUSD_20250615013205",
+        "symbol": "ALGUSD",
+        "dir": "SELL",
+        "entry": 0.1772,
+        "tps": [
+            0.1774,
+            0.17765,
+            0.17805,
+            0.17869
+        ],
+        "sl": 0.1778,
+        "status": "closed-tp4",
+        "hit": [
+            0.1774,
+            0.17765,
+            0.17805,
+            0.17869
+        ],
+        "high_touch": 0.1774,
+        "low_touch": 0.177
+    },
+    "BATUSD": {
+        "id": "BATUSD_20250615003001",
+        "symbol": "BATUSD",
+        "dir": "SELL",
+        "entry": 0.12548,
+        "tps": [
+            0.12556,
+            0.12562,
+            0.12572,
+            0.12588
+        ],
+        "sl": 0.12572,
+        "status": "closed-tp4",
+        "hit": [
+            0.12556,
+            0.12562,
+            0.12572,
+            0.12588
+        ],
+        "high_touch": 0.12556,
+        "low_touch": 0.12546
+    },
+    "XTZUSD": {
+        "id": "XTZUSD_20250615042842",
+        "symbol": "XTZUSD",
+        "dir": "BUY",
+        "entry": 0.56033,
+        "tps": [
+            0.5565,
+            0.55712,
+            0.55812,
+            0.55974
+        ],
+        "sl": 0.54884,
+        "status": "closed-tp4",
+        "hit": [
+            0.5565,
+            0.55712,
+            0.55812,
+            0.55974
+        ],
+        "high_touch": 0.5555,
+        "low_touch": 0.5545
+    },
+    "TRXUSD": {
+        "id": "TRXUSD_20250615004758",
+        "symbol": "TRXUSD",
+        "dir": "SELL",
+        "entry": 0.27046,
+        "tps": [
+            0.27061,
+            0.27078,
+            0.27106,
+            0.27152
+        ],
+        "sl": 0.27091,
+        "status": "closed-tp4",
+        "hit": [
+            0.27061,
+            0.27078,
+            0.27106,
+            0.27152
+        ],
+        "high_touch": 0.27061,
+        "low_touch": 0.27033
+    },
+    "MKRUSD": {
+        "id": "MKRUSD_20250615005736",
+        "symbol": "MKRUSD",
+        "dir": "BUY",
+        "entry": 2095.12,
+        "tps": [
+            2093.78,
+            2086.14152,
+            2073.78152,
+            2053.78304
+        ],
+        "sl": 2091.1,
+        "status": "closed-tp4",
+        "hit": [
+            2093.78,
+            2086.14152,
+            2073.78152,
+            2053.78304
+        ],
+        "high_touch": 2106.14,
+        "low_touch": 2093.78
+    },
+    "SOLUSD": {
+        "id": "SOLUSD_20250615012023",
+        "symbol": "SOLUSD",
+        "dir": "SELL",
+        "entry": 144.47,
+        "tps": [
+            144.55,
+            144.79102,
+            145.18102,
+            145.81204
+        ],
+        "sl": 144.71,
+        "status": "closed-tp4",
+        "hit": [
+            144.55,
+            144.79102,
+            145.18102,
+            145.81204
+        ],
+        "high_touch": 144.55,
+        "low_touch": 144.16
+    },
+    "NEOUSD": {
+        "id": "NEOUSD_20250615043927",
+        "symbol": "NEOUSD",
+        "dir": "SELL",
+        "entry": 5.55,
+        "tps": [
+            5.55,
+            5.54382,
+            5.53382,
+            5.51764
+        ],
+        "sl": 5.55,
+        "status": "closed-sl",
+        "hit": [
+            5.55
+        ],
+        "high_touch": 5.57,
+        "low_touch": 5.5600000000000005
+    },
+    "COMUSD": {
+        "id": "COMUSD_20250615020206",
+        "symbol": "COMUSD",
+        "dir": "BUY",
+        "entry": 52.34,
+        "tps": [
+            52.28,
+            52.08842,
+            51.77842,
+            51.27684
+        ],
+        "sl": 52.16,
+        "status": "closed-tp4",
+        "hit": [
+            52.28,
+            52.08842,
+            51.77842,
+            51.27684
+        ],
+        "high_touch": 52.59,
+        "low_touch": 52.28
+    },
+    "BCHUSD": {
+        "id": "BCHUSD_20250615030139",
+        "symbol": "BCHUSD",
+        "dir": "SELL",
+        "entry": 434.704,
+        "tps": [
+            434.925,
+            435.83346,
+            437.30346,
+            439.68192
+        ],
+        "sl": 435.367,
+        "status": "closed-tp4",
+        "hit": [
+            434.925,
+            435.83346,
+            437.30346,
+            439.68192
+        ],
+        "high_touch": 434.925,
+        "low_touch": 433.455
+    },
+    "Volatility 10 Index": {
+        "id": "Volatility 10 Index_20250618213048",
+        "symbol": "Volatility 10 Index",
+        "dir": "BUY",
+        "entry": 6382.457,
+        "tps": [
+            6391.855,
+            6397.66296,
+            6407.06096,
+            6422.26693
+        ],
+        "sl": 6379.32433,
+        "status": "closed",
+        "hit": [
+            6391.855
+        ],
+        "indicators": {
+            "donchian_upper": 6391.677,
+            "donchian_lower": 6382.279,
+            "macd_main": -1.5775423188351851,
+            "macd_signal": -1.0013713801031485,
+            "macd_hist": -0.5761709387320366,
+            "rsi": 25.267583114349307,
+            "rsi_status": "Oversold",
+            "sma_9": 6385.607777777777,
+            "sma_21": 6387.915571428572,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 10 Index": {
+        "id": "Jump 10 Index_20250615120759",
+        "symbol": "Jump 10 Index",
+        "dir": "SELL",
+        "entry": 89270.01,
+        "tps": [
+            89009.67,
+            88929.08898,
+            88798.69898,
+            88587.72796
+        ],
+        "sl": 90051.03,
+        "status": "open",
+        "hit": [
+            89009.67,
+            88929.08898,
+            88798.69898,
+            88587.72796
+        ],
+        "high_touch": 89270.45,
+        "low_touch": 89140.06
+    },
+    "Volatility 50 (1s) Index": {
+        "id": "Volatility 50 (1s) Index_20250616232122",
+        "symbol": "Volatility 50 (1s) Index",
+        "dir": "BUY",
+        "entry": 206494.77,
+        "tps": [
+            207327.18,
+            207841.60938,
+            208674.01938,
+            210020.85876
+        ],
+        "sl": 206217.3,
+        "status": "open",
+        "hit": [
+            207327.18,
+            207841.60938,
+            208674.01938,
+            210020.85876
+        ],
+        "high_touch": 207293.95,
+        "low_touch": 206461.54
+    },
+    "Volatility 100 (1s) Index": {
+        "id": "Volatility 100 (1s) Index_20250618205450",
+        "symbol": "Volatility 100 (1s) Index",
+        "dir": "SELL",
+        "entry": 502.64,
+        "tps": [
+            498.21,
+            495.47226,
+            491.04226,
+            483.87452
+        ],
+        "sl": 504.11667,
+        "status": "closed",
+        "hit": [
+            498.21,
+            495.47226,
+            491.04226,
+            483.87452
+        ],
+        "indicators": {
+            "donchian_upper": 502.64,
+            "donchian_lower": 498.21,
+            "macd_main": 0.5662205211947935,
+            "macd_signal": 0.5233808362277033,
+            "macd_hist": 0.04283968496709023,
+            "rsi": 62.31977469527483,
+            "rsi_status": "Neutral",
+            "sma_9": 501.0833333333333,
+            "sma_21": 501.0557142857143,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 75 Index": {
+        "id": "Jump 75 Index_20250615143830",
+        "symbol": "Jump 75 Index",
+        "dir": "BUY",
+        "entry": 15937.47,
+        "tps": [
+            16206.65,
+            16290.77216,
+            16426.89216,
+            16647.13432
+        ],
+        "sl": 15129.93,
+        "status": "open",
+        "hit": [
+            16206.65,
+            16290.77216,
+            16426.89216,
+            16647.13432
+        ],
+        "high_touch": 16070.53,
+        "low_touch": 15934.41
+    },
+    "Jump 100 Index": {
+        "id": "Jump 100 Index_20250615160654",
+        "symbol": "Jump 100 Index",
+        "dir": "BUY",
+        "entry": 3203.89,
+        "tps": [
+            3309.75,
+            3342.73884,
+            3396.11884,
+            3482.48768
+        ],
+        "sl": 2886.31,
+        "status": "open",
+        "hit": [
+            3309.75,
+            3342.73884,
+            3396.11884,
+            3482.48768
+        ],
+        "high_touch": 3256.37,
+        "low_touch": 3202.99
+    },
+    "Volatility 50 Index": {
+        "id": "Volatility 50 Index_20250618223050",
+        "symbol": "Volatility 50 Index",
+        "dir": "SELL",
+        "entry": 139.906,
+        "tps": [
+            139.1856,
+            138.74039,
+            138.01999,
+            136.85439
+        ],
+        "sl": 140.14613,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 139.906,
+            "donchian_lower": 139.1856,
+            "macd_main": 0.09833068832534764,
+            "macd_signal": 0.05656543789078337,
+            "macd_hist": 0.04176525043456427,
+            "rsi": 67.43840795991295,
+            "rsi_status": "Neutral",
+            "sma_9": 139.64344444444444,
+            "sma_21": 139.49981904761904,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 25 Index": {
+        "id": "Jump 25 Index_20250618212539",
+        "symbol": "Jump 25 Index",
+        "dir": "SELL",
+        "entry": 132186.09,
+        "tps": [
+            131761.28,
+            131498.74742,
+            131073.93742,
+            130386.59484
+        ],
+        "sl": 132327.69333,
+        "status": "closed",
+        "hit": [
+            131761.28,
+            131498.74742,
+            131073.93742
+        ],
+        "indicators": {
+            "donchian_upper": 132187.36,
+            "donchian_lower": 131762.55,
+            "macd_main": 73.00299315125449,
+            "macd_signal": 41.833112186602726,
+            "macd_hist": 31.16988096465176,
+            "rsi": 73.38752455852634,
+            "rsi_status": "Overbought",
+            "sma_9": 132062.3811111111,
+            "sma_21": 131943.43428571426,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 25 (1s) Index": {
+        "id": "Volatility 25 (1s) Index_20250617002334",
+        "symbol": "Volatility 25 (1s) Index",
+        "dir": "SELL",
+        "entry": 638848.85,
+        "tps": [
+            636571.2,
+            635163.6123,
+            632885.9623,
+            629200.7246
+        ],
+        "sl": 639608.06667,
+        "status": "closed",
+        "hit": [
+            636571.2,
+            635163.6123,
+            632885.9623
+        ],
+        "high_touch": 638848.85,
+        "low_touch": 636571.2
+    },
+    "Jump 50 Index": {
+        "id": "Jump 50 Index_20250618214218",
+        "symbol": "Jump 50 Index",
+        "dir": "BUY",
+        "entry": 36112.59,
+        "tps": [
+            36253.84,
+            36341.1325,
+            36482.3825,
+            36710.925
+        ],
+        "sl": 36065.50667,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 36248.24,
+            "donchian_lower": 36106.99,
+            "macd_main": -22.544885266572237,
+            "macd_signal": -14.272371317182785,
+            "macd_hist": -8.272513949389452,
+            "rsi": 32.216593144907236,
+            "rsi_status": "Neutral",
+            "sma_9": 36165.64444444444,
+            "sma_21": 36187.74285714285,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 75 (1s) Index": {
+        "id": "Volatility 75 (1s) Index_20250615181511",
+        "symbol": "Volatility 75 (1s) Index",
+        "dir": "SELL",
+        "entry": 33964.35,
+        "tps": [
+            4339.34,
+            4324.8788,
+            4301.4788,
+            4263.6176
+        ],
+        "sl": 43839.35333,
+        "status": "open",
+        "hit": [],
+        "high_touch": 4386.14,
+        "low_touch": 4362.74
+    },
+    "Step Index": {
+        "id": "Step Index_20250615190346",
+        "symbol": "Step Index",
+        "dir": "BUY",
+        "entry": 2830.069,
+        "tps": [
+            8466.1,
+            8469.5608,
+            8475.1608,
+            8484.2216
+        ],
+        "sl": 951.392,
+        "status": "open",
+        "hit": [
+            8466.1,
+            8469.5608,
+            8475.1608,
+            8484.2216
+        ],
+        "high_touch": 8460.5,
+        "low_touch": 8454.9
+    },
+    "Volatility 75 Index": {
+        "id": "Volatility 75 Index_20250618213505",
+        "symbol": "Volatility 75 Index",
+        "dir": "BUY",
+        "entry": 106002.01,
+        "tps": [
+            106814.92,
+            107317.29838,
+            108130.20838,
+            109445.49676
+        ],
+        "sl": 105731.04,
+        "status": "open",
+        "hit": [
+            106814.92,
+            107317.29838,
+            108130.20838,
+            109445.49676
+        ],
+        "indicators": {
+            "donchian_upper": 106783.94,
+            "donchian_lower": 105971.03,
+            "macd_main": -132.43195368844317,
+            "macd_signal": -96.13996071979804,
+            "macd_hist": -36.29199296864513,
+            "rsi": 35.04728518608046,
+            "rsi_status": "Neutral",
+            "sma_9": 106145.7611111111,
+            "sma_21": 106353.13333333335,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 10 (1s) Index": {
+        "id": "Volatility 10 (1s) Index_20250615183114",
+        "symbol": "Volatility 10 (1s) Index",
+        "dir": "SELL",
+        "entry": 100920.26,
+        "tps": [
+            9087.65,
+            9081.72956,
+            9072.14956,
+            9056.64912
+        ],
+        "sl": 131531.13,
+        "status": "open",
+        "hit": [
+            9087.65,
+            9081.72956,
+            9072.14956
+        ],
+        "high_touch": 9106.81,
+        "low_touch": 9097.23
+    },
+    "Volatility 100 Index": {
+        "id": "Volatility 100 Index_20250615185740",
+        "symbol": "Volatility 100 Index",
+        "dir": "SELL",
+        "entry": 2833.475,
+        "tps": [
+            1051.45,
+            1044.38626,
+            1032.95626,
+            1014.46252
+        ],
+        "sl": 3427.48333,
+        "status": "open",
+        "hit": [],
+        "high_touch": 1074.31,
+        "low_touch": 1062.88
+    },
+    "Volatility 25 Index": {
+        "id": "Volatility 25 Index_20250615185405",
+        "symbol": "Volatility 25 Index",
+        "dir": "SELL",
+        "entry": 9096.91,
+        "tps": [
+            2819.847,
+            2816.20945,
+            2810.32345,
+            2800.7999
+        ],
+        "sl": 11189.26433,
+        "status": "open",
+        "hit": [
+            2819.847,
+            2816.20945,
+            2810.32345,
+            2800.7999
+        ],
+        "high_touch": 2831.619,
+        "low_touch": 2825.733
+    },
+    "EURJPY": {
+        "id": "EURJPY_20250618205040",
+        "symbol": "EURJPY",
+        "dir": "SELL",
+        "entry": 166.626,
+        "tps": [
+            166.562,
+            166.52245,
+            166.45845,
+            166.3549
+        ],
+        "sl": 166.64733,
+        "status": "closed",
+        "hit": [
+            166.562,
+            166.52245,
+            166.45845,
+            166.3549
+        ],
+        "indicators": {
+            "donchian_upper": 166.636,
+            "donchian_lower": 166.572,
+            "macd_main": 0.012476292691076196,
+            "macd_signal": 0.010337763055665522,
+            "macd_hist": 0.002138529635410674,
+            "rsi": 66.06057647082893,
+            "rsi_status": "Neutral",
+            "sma_9": 166.61455555555554,
+            "sma_21": 166.60157142857145,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "USDZAR": {
+        "id": "USDZAR_20250618202258",
+        "symbol": "USDZAR",
+        "dir": "BUY",
+        "entry": 18.01222,
+        "tps": [
+            18.02104,
+            18.02649,
+            18.03531,
+            18.04958
+        ],
+        "sl": 18.00928,
+        "status": "closed",
+        "hit": [
+            18.02104,
+            18.02649,
+            18.03531,
+            18.04958
+        ],
+        "indicators": {
+            "donchian_upper": 18.0099,
+            "donchian_lower": 18.00108,
+            "macd_main": -0.0013176786052113698,
+            "macd_signal": -0.0010933684222184487,
+            "macd_hist": -0.00022431018299292108,
+            "rsi": 40.134933997951705,
+            "rsi_status": "Neutral",
+            "sma_9": 18.004095555555555,
+            "sma_21": 18.004347619047618,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "USDSEK": {
+        "id": "USDSEK_20250617015004",
+        "symbol": "USDSEK",
+        "dir": "BUY",
+        "entry": 9.48978,
+        "tps": [
+            9.49728,
+            9.50191,
+            9.50941,
+            9.52155
+        ],
+        "sl": 9.48728,
+        "status": "open",
+        "hit": [
+            9.49728,
+            9.50191,
+            9.50941,
+            9.52155
+        ],
+        "indicators": {
+            "donchian_upper": 9.4934,
+            "donchian_lower": 9.4859,
+            "macd_main": -0.0013565114001838907,
+            "macd_signal": -0.0009236281723728368,
+            "macd_hist": -0.0004328832278110539,
+            "rsi": 28.76199306861723,
+            "rsi_status": "Oversold",
+            "sma_9": 9.488933333333332,
+            "sma_21": 9.490294285714285,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "GBPUSD": {
+        "id": "GBPUSD_20250618202154",
+        "symbol": "GBPUSD",
+        "dir": "SELL",
+        "entry": 1.34171,
+        "tps": [
+            1.34076,
+            1.34017,
+            1.33922,
+            1.33769
+        ],
+        "sl": 1.34203,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 1.34177,
+            "donchian_lower": 1.34082,
+            "macd_main": 0.0001908739785903002,
+            "macd_signal": 0.00014579017498165118,
+            "macd_hist": 4.5083803608649014e-05,
+            "rsi": 67.49071505380412,
+            "rsi_status": "Neutral",
+            "sma_9": 1.3415766666666666,
+            "sma_21": 1.3413419047619048,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "USDCHF": {
+        "id": "USDCHF_20250617011733",
+        "symbol": "USDCHF",
+        "dir": "BUY",
+        "entry": 0.81399,
+        "tps": [
+            0.81467,
+            0.81509,
+            0.81577,
+            0.81687
+        ],
+        "sl": 0.81376,
+        "status": "open",
+        "hit": [
+            0.81467,
+            0.81509,
+            0.81577,
+            0.81687
+        ],
+        "high_touch": 0.81457,
+        "low_touch": 0.81389
+    },
+    "USDNOK": {
+        "id": "USDNOK_20250618224201",
+        "symbol": "USDNOK",
+        "dir": "SELL",
+        "entry": 9.97412,
+        "tps": [
+            9.97027,
+            9.96789,
+            9.96404,
+            9.95781
+        ],
+        "sl": 9.9754,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 9.9752,
+            "donchian_lower": 9.97135,
+            "macd_main": 0.0005571144343825551,
+            "macd_signal": 0.00039166052021715527,
+            "macd_hist": 0.00016545391416539988,
+            "rsi": 60.09590600432122,
+            "rsi_status": "Neutral",
+            "sma_9": 9.974238888888888,
+            "sma_21": 9.973549047619048,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "CHFJPY": {
+        "id": "CHFJPY_20250617022451",
+        "symbol": "CHFJPY",
+        "dir": "SELL",
+        "entry": 178.047,
+        "tps": [
+            177.896,
+            177.80268,
+            177.65168,
+            177.40736
+        ],
+        "sl": 178.09733,
+        "status": "closed",
+        "hit": [
+            177.896,
+            177.80268,
+            177.65168,
+            177.40736
+        ],
+        "indicators": {
+            "donchian_upper": 178.058,
+            "donchian_lower": 177.907,
+            "macd_main": 0.021380029356976138,
+            "macd_signal": 0.010797140767133347,
+            "macd_hist": 0.010582888589842791,
+            "rsi": 68.43336268114564,
+            "rsi_status": "Neutral",
+            "sma_9": 178.00311111111108,
+            "sma_21": 177.9712857142857,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "EURZAR": {
+        "id": "EURZAR_20250617022317",
+        "symbol": "EURZAR",
+        "dir": "BUY",
+        "entry": 20.60882,
+        "tps": [
+            20.62682,
+            20.63794,
+            20.65594,
+            20.68507
+        ],
+        "sl": 20.60282,
+        "status": "open",
+        "hit": [
+            20.62682,
+            20.63794,
+            20.65594,
+            20.68507
+        ],
+        "indicators": {
+            "donchian_upper": 20.6152,
+            "donchian_lower": 20.5972,
+            "macd_main": -0.0015781085595101274,
+            "macd_signal": -0.0009399212659768451,
+            "macd_hist": -0.0006381872935332823,
+            "rsi": 36.96073250400137,
+            "rsi_status": "Neutral",
+            "sma_9": 20.602755555555557,
+            "sma_21": 20.605509523809523,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "EURGBP": {
+        "id": "EURGBP_20250618200237",
+        "symbol": "EURGBP",
+        "dir": "SELL",
+        "entry": 0.85568,
+        "tps": [
+            0.85518,
+            0.85487,
+            0.85437,
+            0.85356
+        ],
+        "sl": 0.85585,
+        "status": "closed",
+        "hit": [
+            0.85518,
+            0.85487
+        ],
+        "indicators": {
+            "donchian_upper": 0.85573,
+            "donchian_lower": 0.85523,
+            "macd_main": 7.192495450081271e-05,
+            "macd_signal": 4.3648949479656796e-05,
+            "macd_hist": 2.8276005021155914e-05,
+            "rsi": 66.25223343680506,
+            "rsi_status": "Neutral",
+            "sma_9": 0.8555822222222222,
+            "sma_21": 0.8554609523809524,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "USDCAD": {
+        "id": "USDCAD_20250616231943",
+        "symbol": "USDCAD",
+        "dir": "BUY",
+        "entry": 1.3569,
+        "tps": [
+            1.35725,
+            1.35747,
+            1.35782,
+            1.35838
+        ],
+        "sl": 1.35678,
+        "status": "open",
+        "hit": [
+            1.35725,
+            1.35747,
+            1.35782,
+            1.35838
+        ],
+        "high_touch": 1.35714,
+        "low_touch": 1.35679
+    },
+    "AUDUSD": {
+        "id": "AUDUSD_20250616230912",
+        "symbol": "AUDUSD",
+        "dir": "SELL",
+        "entry": 0.6524,
+        "tps": [
+            0.65156,
+            0.65104,
+            0.6502,
+            0.64884
+        ],
+        "sl": 0.65268,
+        "status": "open",
+        "hit": [
+            0.65156,
+            0.65104,
+            0.6502,
+            0.64884
+        ],
+        "high_touch": 0.65248,
+        "low_touch": 0.65164
+    },
+    "XAUUSD": {
+        "id": "XAUUSD_20250617011048",
+        "symbol": "XAUUSD",
+        "dir": "SELL",
+        "entry": 3400.83,
+        "tps": [
+            3391.49,
+            3385.71788,
+            3376.37788,
+            3361.26576
+        ],
+        "sl": 3403.94333,
+        "status": "open",
+        "hit": [
+            3391.49,
+            3385.71788,
+            3376.37788
+        ],
+        "high_touch": 3400.84,
+        "low_touch": 3391.5
+    },
+    "USDSGD": {
+        "id": "USDSGD_20250618203804",
+        "symbol": "USDSGD",
+        "dir": "BUY",
+        "entry": 1.28514,
+        "tps": [
+            1.28542,
+            1.28559,
+            1.28587,
+            1.28633
+        ],
+        "sl": 1.28505,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 1.28521,
+            "donchian_lower": 1.2849300000000001,
+            "macd_main": -7.400229333431874e-05,
+            "macd_signal": -7.044829804880805e-05,
+            "macd_hist": -3.5539952855106896e-06,
+            "rsi": 37.77169263950692,
+            "rsi_status": "Neutral",
+            "sma_9": 1.2850588888888888,
+            "sma_21": 1.2850733333333335,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "GBPJPY": {
+        "id": "GBPJPY_20250618205145",
+        "symbol": "GBPJPY",
+        "dir": "SELL",
+        "entry": 194.808,
+        "tps": [
+            194.701,
+            194.63487,
+            194.52787,
+            194.35475
+        ],
+        "sl": 194.84367,
+        "status": "closed",
+        "hit": [
+            194.701,
+            194.63487,
+            194.52787,
+            194.35475
+        ],
+        "indicators": {
+            "donchian_upper": 194.817,
+            "donchian_lower": 194.71,
+            "macd_main": 0.020611951199356326,
+            "macd_signal": 0.013553146089750737,
+            "macd_hist": 0.00705880510960559,
+            "rsi": 77.85499211827667,
+            "rsi_status": "Overbought",
+            "sma_9": 194.75866666666667,
+            "sma_21": 194.74028571428573,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "NZDUSD": {
+        "id": "NZDUSD_20250617014930",
+        "symbol": "NZDUSD",
+        "dir": "SELL",
+        "entry": 0.60586,
+        "tps": [
+            0.60517,
+            0.60474,
+            0.60405,
+            0.60294
+        ],
+        "sl": 0.60609,
+        "status": "open",
+        "hit": [
+            0.60517,
+            0.60474,
+            0.60405,
+            0.60294
+        ],
+        "indicators": {
+            "donchian_upper": 0.60593,
+            "donchian_lower": 0.60524,
+            "macd_main": 0.00014067378684867737,
+            "macd_signal": 0.0001183225442195121,
+            "macd_hist": 2.235124262916527e-05,
+            "rsi": 66.72707677598936,
+            "rsi_status": "Neutral",
+            "sma_9": 0.60578,
+            "sma_21": 0.6056152380952381,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "EURAUD": {
+        "id": "EURAUD_20250618221030",
+        "symbol": "EURAUD",
+        "dir": "SELL",
+        "entry": 1.76461,
+        "tps": [
+            1.76261,
+            1.76137,
+            1.75937,
+            1.75614
+        ],
+        "sl": 1.76528,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 1.76471,
+            "donchian_lower": 1.76271,
+            "macd_main": 0.0002838992238536342,
+            "macd_signal": 0.00020773073327999206,
+            "macd_hist": 7.616849057364214e-05,
+            "rsi": 68.15668324955797,
+            "rsi_status": "Neutral",
+            "sma_9": 1.7643611111111113,
+            "sma_21": 1.76388,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "NZDJPY": {
+        "id": "NZDJPY_20250617022625",
+        "symbol": "NZDJPY",
+        "dir": "SELL",
+        "entry": 87.785,
+        "tps": [
+            87.693,
+            87.63614,
+            87.54414,
+            87.39529
+        ],
+        "sl": 87.81567,
+        "status": "open",
+        "hit": [
+            87.693,
+            87.63614,
+            87.54414,
+            87.39529
+        ],
+        "indicators": {
+            "donchian_upper": 87.795,
+            "donchian_lower": 87.703,
+            "macd_main": 0.013186365238453845,
+            "macd_signal": 0.008805799684907623,
+            "macd_hist": 0.004380565553546222,
+            "rsi": 63.05339470953355,
+            "rsi_status": "Neutral",
+            "sma_9": 87.76177777777778,
+            "sma_21": 87.74771428571428,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "XAGUSD": {
+        "id": "XAGUSD_20250618200059",
+        "symbol": "XAGUSD",
+        "dir": "BUY",
+        "entry": 36.593,
+        "tps": [
+            36.724,
+            36.80496,
+            36.93596,
+            37.14792
+        ],
+        "sl": 36.54933,
+        "status": "closed",
+        "hit": [
+            36.724
+        ],
+        "indicators": {
+            "donchian_upper": 36.707,
+            "donchian_lower": 36.576,
+            "macd_main": -0.016718937992607152,
+            "macd_signal": -0.015215406359241844,
+            "macd_hist": -0.0015035316333653088,
+            "rsi": 37.173732890836924,
+            "rsi_status": "Neutral",
+            "sma_9": 36.604000000000006,
+            "sma_21": 36.628523809523806,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "USDMXN": {
+        "id": "USDMXN_20250618215031",
+        "symbol": "USDMXN",
+        "dir": "BUY",
+        "entry": 19.01517,
+        "tps": [
+            19.01877,
+            19.02099,
+            19.02459,
+            19.03042
+        ],
+        "sl": 19.01397,
+        "status": "open",
+        "hit": [
+            19.01877,
+            19.02099,
+            19.02459,
+            19.03042
+        ],
+        "indicators": {
+            "donchian_upper": 18.9937,
+            "donchian_lower": 18.990099999999998,
+            "macd_main": -0.0010342497063966505,
+            "macd_signal": -0.000911840297953748,
+            "macd_hist": -0.00012240940844290252,
+            "rsi": 30.95011368860527,
+            "rsi_status": "Neutral",
+            "sma_9": 18.992466666666665,
+            "sma_21": 18.99302857142857,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "USDJPY": {
+        "id": "USDJPY_20250618221712",
+        "symbol": "USDJPY",
+        "dir": "BUY",
+        "entry": 144.948,
+        "tps": [
+            145.156,
+            145.28454,
+            145.49254,
+            145.82909
+        ],
+        "sl": 144.87867,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 145.142,
+            "donchian_lower": 144.934,
+            "macd_main": -0.0284962588274027,
+            "macd_signal": -0.01684719761705427,
+            "macd_hist": -0.011649061210348428,
+            "rsi": 29.636849742951014,
+            "rsi_status": "Oversold",
+            "sma_9": 144.98911111111113,
+            "sma_21": 145.0375238095238,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "AUDJPY": {
+        "id": "AUDJPY_20250617023032",
+        "symbol": "AUDJPY",
+        "dir": "SELL",
+        "entry": 94.541,
+        "tps": [
+            94.436,
+            94.37111,
+            94.26611,
+            94.09622
+        ],
+        "sl": 94.576,
+        "status": "open",
+        "hit": [
+            94.436,
+            94.37111,
+            94.26611,
+            94.09622
+        ],
+        "indicators": {
+            "donchian_upper": 94.552,
+            "donchian_lower": 94.447,
+            "macd_main": 0.015988126695418714,
+            "macd_signal": 0.01366090979290296,
+            "macd_hist": 0.002327216902515755,
+            "rsi": 61.709709807304904,
+            "rsi_status": "Neutral",
+            "sma_9": 94.52477777777777,
+            "sma_21": 94.50519047619048,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    }
+}

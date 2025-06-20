@@ -12,12 +12,11 @@ import random
 import time
 import os
 import logging
-import pyperclip
-import win32clipboard
-import csv
 import requests
 import numpy as np
 from datetime import datetime, timedelta, timezone
+import pyperclip
+import win32clipboard
 
 # ===== TESTING CONFIG =====
 TEST_MODE = False  # Set to False in production
@@ -60,7 +59,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
 # === WhatsApp SETUP ===
-WHATSAPP_TARGET = '"IntelliTrade"'
+WHATSAPP_TARGET = '"🐐 GOAT-ZILLA FX   "'
 PROFILE_DIR = os.path.join(os.getcwd(), 'whatsapp_profile')
 os.makedirs(PROFILE_DIR, exist_ok=True)
 
@@ -384,29 +383,42 @@ class TradePerformance:
         self.current_loss_streak = 0
         
     def log_trade(self, trade_data):
-        """Log detailed trade performance to CSV"""
+        """Log detailed trade performance to TXT"""
         # Validate all prices before logging
         for price in [trade_data['Entry'], trade_data['Exit']]:
             if not is_valid_price(price, trade_data['Symbol']):
                 print(f"⚠️ Invalid price {price} for {trade_data['Symbol']} - skipping log")
                 return
                 
-        filename = os.path.join(TRADE_PERFORMANCE_DIR, f"trade_performance_{self.today}.csv")
-        file_exists = os.path.isfile(filename)
+        filename = os.path.join(TRADE_PERFORMANCE_DIR, 
+                               f"trade_performance_{self.today}.txt")
         
-        with open(filename, 'a', newline='', encoding='utf-8') as f:
-            fieldnames = [
-                'Timestamp', 'TradeID', 'Symbol', 'Direction', 'Entry', 'Exit', 
-                'Outcome', 'Pips', 'DonchianUpper', 'DonchianLower',
-                'MACD_Main', 'MACD_Signal', 'MACD_Hist', 
-                'RSI', 'RSI_Status', 'SMA_9', 'SMA_21', 'SMA_Alignment'
-            ]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            
-            if not file_exists:
-                writer.writeheader()
-            
-            writer.writerow(trade_data)
+        log_entry = f"""
+=== Trade Performance ===
+Timestamp: {trade_data['Timestamp']}
+Trade ID: {trade_data['TradeID']}
+Symbol: {trade_data['Symbol']}
+Direction: {trade_data['Direction']}
+Entry: {trade_data['Entry']}
+Exit: {trade_data['Exit']}
+Outcome: {trade_data['Outcome']}
+Pips: {trade_data['Pips']:.5f}
+--- Indicators ---
+Donchian Upper: {trade_data['DonchianUpper']:.5f}
+Donchian Lower: {trade_data['DonchianLower']:.5f}
+MACD Main: {trade_data['MACD_Main']:.5f}
+MACD Signal: {trade_data['MACD_Signal']:.5f}
+MACD Hist: {trade_data['MACD_Hist']:.5f}
+RSI: {trade_data['RSI']:.2f}
+RSI Status: {trade_data['RSI_Status']}
+SMA 9: {trade_data['SMA_9']:.5f}
+SMA 21: {trade_data['SMA_21']:.5f}
+SMA Alignment: {trade_data['SMA_Alignment']}
+=====================
+"""
+        
+        with open(filename, 'a') as f:
+            f.write(log_entry)
         
         # Update daily summary stats
         self.trade_count += 1
@@ -614,12 +626,16 @@ Position status: {profit_status}
     return send_whatsapp_message(driver, wait, message)
 
 # === SPONTANEOUS MESSAGES ===
+# Global flag to track morning message status
+GOOD_MORNING_SENT = False
+
 def send_spontaneous_message(driver, wait):
     """Send various spontaneous messages"""
+    global GOOD_MORNING_SENT
     now = datetime.now(timezone.utc)
     
-    # Morning messages (6AM-10AM UTC)
-    if 6 <= now.hour <= 10:
+    # Morning messages (6AM-10AM UTC) - send only once per day
+    if 6 <= now.hour <= 10 and not GOOD_MORNING_SENT:
         msg = f"""
 ☀️ Good Morning Traders!
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -629,7 +645,14 @@ def send_spontaneous_message(driver, wait):
     "New session, new possibilities - trade with focus"
 ])}
 """
-        return send_whatsapp_message(driver, wait, msg)
+        if send_whatsapp_message(driver, wait, msg):
+            GOOD_MORNING_SENT = True
+            print("✅ Morning message sent")
+            return True
+    
+    # Reset flag after morning hours
+    if now.hour > 10 and GOOD_MORNING_SENT:
+        GOOD_MORNING_SENT = False
     
     # Market session reminders
     sessions = [
@@ -651,19 +674,6 @@ def send_spontaneous_message(driver, wait):
 ])}
 """
             return send_whatsapp_message(driver, wait, msg)
-    
-    # Motivational messages
-    if random.random() > 0.85:
-        msg = f"""
-💪 Trading Wisdom
-━━━━━━━━━━━━━━━━━━━━━━
-"{random.choice([
-    "Discipline separates winners from gamblers",
-    "The market rewards patience more than brilliance",
-    "Risk management isn't expensive - it's priceless"
-])}"
-"""
-        return send_whatsapp_message(driver, wait, msg)
     
     # Market status commentary
     if random.random() > 0.9:
@@ -770,64 +780,161 @@ def simulate_signal(driver, wait, tracked, analytics):
         print(f"❌ Failed to send simulated signal: {e}")
         return False
     
-# === MESSAGE SENDING ===
+# === ROBUST MESSAGE SENDING (HYBRID APPROACH) ===
 def send_whatsapp_message(driver, wait, message):
     max_attempts = 3
     for attempt in range(max_attempts):
         try:
             print(f"\nAttempt {attempt+1}/{max_attempts} to send message")
             
+            # Refresh WhatsApp page if this is a retry
+            if attempt > 0:
+                print("Refreshing WhatsApp page...")
+                driver.get("https://web.whatsapp.com/")
+                print("✅ WhatsApp reloaded")
+                time.sleep(8)  # Allow more time for reload
+            
+            # Wait for chat list to be visible
+            wait.until(EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, "div[data-testid='chat-list']")
+            ))
+            print("✅ Chat list visible")
+            
+            # Find and open target chat
             chat_css = f"span[title={WHATSAPP_TARGET}]"
-            group_title = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, chat_css)))
+            group_title = wait.until(EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, chat_css)
+            ))
             group_title.click()
             print("✅ Found and clicked target chat")
-            time.sleep(1)
+            time.sleep(3)  # Important pause for chat to load
             
-            input_selectors = [
-                "div[contenteditable='true'][title='Type a message']",
+            # Wait for conversation panel to be visible
+            wait.until(EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, "div[data-testid='conversation-panel']")
+            ))
+            print("✅ Conversation panel loaded")
+            
+            # Try to find input box with various selectors
+            input_box = None
+            selectors = [
+                "div[title='Type a message'][contenteditable='true']",
                 "div[contenteditable='true'][data-tab='10']",
-                "footer div[contenteditable='true']"
+                "footer div[contenteditable='true']",
+                "div[contenteditable='true'][role='textbox']",
+                "div[contenteditable='true']:not([role])"
             ]
             
-            input_box = None
-            for selector in input_selectors:
+            for selector in selectors:
                 try:
-                    input_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+                    input_box = wait.until(EC.element_to_be_clickable(
+                        (By.CSS_SELECTOR, selector)
+                    ), timeout=15)
                     print(f"✅ Found input with selector: {selector}")
                     break
                 except:
                     continue
             
+            # JavaScript fallback if standard methods fail
             if not input_box:
-                raise RuntimeError("Could not find message input box")
+                print("⚠️ Using JavaScript fallback to find input box")
+                input_box = driver.execute_script(
+                    "return document.querySelector('div[contenteditable=\"true\"][title=\"Type a message\"]') || "
+                    "document.querySelector('footer div[contenteditable=\"true\"]') || "
+                    "document.querySelector('div[contenteditable=\"true\"][role=\"textbox\"]');"
+                )
+                if input_box:
+                    print("✅ Found input with JavaScript fallback")
+                else:
+                    raise RuntimeError("Could not find message input box")
             
-            input_box.clear()
-            print("Cleared input box")
+            # HYBRID APPROACH: Try keyboard input first, then clipboard fallback
+            if attempt < 2:  # First two attempts use keyboard
+                print("📋 Setting message content via keyboard input")
+                
+                # Clear existing content
+                input_box.send_keys(Keys.CONTROL + "a")
+                input_box.send_keys(Keys.DELETE)
+                
+                # Split message into chunks to avoid performance issues
+                max_chunk_length = 50  # Reduced chunk size for reliability
+                chunks = [message[i:i+max_chunk_length] for i in range(0, len(message), max_chunk_length)]
+                
+                for i, chunk in enumerate(chunks):
+                    input_box.send_keys(chunk)
+                    print(f"📋 Appended chunk {i+1}/{len(chunks)}")
+                    time.sleep(0.1)  # Increased pause between chunks
+                
+                time.sleep(1)  # Allow time for WhatsApp to process
+                
+                # Submit using Enter key
+                print("🚀 Sending message via Enter key")
+                input_box.send_keys(Keys.RETURN)
+            else:  # Final attempt uses clipboard
+                print("📋 Using clipboard method for final attempt")
+                input_box.send_keys(Keys.CONTROL + "a")
+                input_box.send_keys(Keys.DELETE)
+                print("🧹 Cleared input box")
+                
+                # Copy to clipboard using cross-platform method
+                try:
+                    pyperclip.copy(message)
+                    print("📋 Copied message to clipboard via pyperclip")
+                except:
+                    try:
+                        win32clipboard.OpenClipboard()
+                        win32clipboard.EmptyClipboard()
+                        win32clipboard.SetClipboardText(message)
+                        win32clipboard.CloseClipboard()
+                        print("📋 Copied message to clipboard via win32clipboard")
+                    except:
+                        print("⚠️ Failed to copy to clipboard, using keyboard input")
+                        input_box.send_keys(message)
+                
+                # Paste from clipboard
+                input_box.send_keys(Keys.CONTROL, 'v')
+                print("📋 Pasted message from clipboard")
+                time.sleep(1)
+                input_box.send_keys(Keys.RETURN)
+                print("🚀 Sent message with Enter key")
             
-            try:
-                pyperclip.copy(message)
-            except:
-                win32clipboard.OpenClipboard()
-                win32clipboard.EmptyClipboard()
-                win32clipboard.SetClipboardText(message)
-                win32clipboard.CloseClipboard()
+            # Verify message was sent
+            time.sleep(3)
+            last_message = driver.execute_script(
+                "var messages = document.querySelectorAll('[data-pre-plain-text]');"
+                "return messages.length > 0 ? messages[messages.length-1].innerText : '';"
+            )
             
-            print("📋 Copied message to clipboard")
-            input_box.send_keys(Keys.CONTROL, 'v')
-            print("📋 Pasted message from clipboard")
-            time.sleep(1)
-            input_box.send_keys(Keys.ENTER)
-            print("✅ Message sent successfully")
-            return True
+            if message.split('\n')[0] in last_message:
+                print("✅ Message sent and verified")
+                return True
+            else:
+                print("⚠️ Message not found after sending attempt")
+                # Fallback verification method
+                try:
+                    last_msg_element = driver.find_elements(By.CSS_SELECTOR, "[data-pre-plain-text]")[-1]
+                    if last_msg_element.text.startswith(message.split('\n')[0]):
+                        print("✅ Fallback verification successful")
+                        return True
+                except:
+                    pass
+                raise RuntimeError("Message verification failed")
             
         except Exception as e:
             print(f"❌ Message send attempt {attempt+1} failed: {str(e)}")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            screenshot_name = f'message_error_{timestamp}.png'
+            screenshot_name = f'whatsapp_error_{timestamp}.png'
             driver.save_screenshot(screenshot_name)
             print(f"Saved screenshot as '{screenshot_name}'")
-            driver.refresh()
-            time.sleep(5)
+            
+            # Additional debugging
+            try:
+                page_html = driver.execute_script("return document.documentElement.outerHTML;")
+                with open(f"whatsapp_source_{timestamp}.html", "w", encoding="utf-8") as f:
+                    f.write(page_html)
+                print(f"Saved page source as 'whatsapp_source_{timestamp}.html'")
+            except Exception as save_error:
+                print(f"⚠️ Failed to save page source: {save_error}")
     
     print(f"❌ Failed to send message after {max_attempts} attempts")
     return False
@@ -861,7 +968,7 @@ def validate_signal(sym, direction, entry_price, tolerance=0.0005):
         print(f"❌ Signal validation failed for {sym}: {e}")
         return False
 
-def is_data_fresh(symbol, current_time, max_age=120):
+def is_data_fresh(symbol, current_time, max_age=300):  # Increased from 120 to 300 seconds
     """Check if market data is fresh (within max_age seconds)"""
     try:
         # Get time of last tick
@@ -968,10 +1075,10 @@ if __name__ == "__main__":
                 
                 for sym in symbols:
                     try:
-                        # Skip if we've recently sent a signal for this symbol
+                        # Skip if we've recently sent a signal for this symbol (reduced to 60 seconds)
                         if sym in last_signal_times:
                             time_since_last = (current_utc_time - last_signal_times[sym]).total_seconds()
-                            if time_since_last < 300:  # 5 minutes cooldown
+                            if time_since_last < 60:  # Reduced from 300 to 60 seconds
                                 continue
                         
                         # Skip if already has an open trade
@@ -996,11 +1103,15 @@ if __name__ == "__main__":
                         current_close = df['close'].iloc[-1]
                         current_upper = donchian_upper.iloc[-1]
                         current_lower = donchian_lower.iloc[-1]
-                        current_hist = histogram.iloc[-1]
-                        current_signal = signal_line.iloc[-1]
                         current_rsi = rsi.iloc[-1]
                         current_sma_9 = sma_9.iloc[-1]
                         current_sma_21 = sma_21.iloc[-1]
+                        
+                        # Get MACD values for current and previous bars
+                        macd_line_current = macd_line.iloc[-1]
+                        macd_line_prev = macd_line.iloc[-2]
+                        signal_line_current = signal_line.iloc[-1]
+                        signal_line_prev = signal_line.iloc[-2]
                         
                         # Determine SMA alignment
                         sma_alignment = "Bullish" if current_sma_9 > current_sma_21 else "Bearish"
@@ -1015,22 +1126,33 @@ if __name__ == "__main__":
                         if TEST_MODE and sym == debug_symbol:
                             print(f"\n[DEBUG] {sym}:")
                             print(f"  Close: {current_close:.5f}, Upper: {current_upper:.5f}, Lower: {current_lower:.5f}")
-                            print(f"  MACD Histogram: {current_hist:.5f}, Signal: {current_signal:.5f}")
+                            print(f"  MACD Line: {macd_line_current:.5f}, Signal: {signal_line_current:.5f}")
+                            print(f"  MACD Prev: {macd_line_prev:.5f}, Signal Prev: {signal_line_prev:.5f}")
                             print(f"  RSI: {current_rsi:.2f} ({rsi_status})")
                             print(f"  SMA 9: {current_sma_9:.5f}, SMA 21: {current_sma_21:.5f} ({sma_alignment})")
                         
-                        # Signal detection - YOUR EXACT STRATEGY
+                        # Signal detection with relaxed MACD confirmation
                         direction = None
                         
-                        # SELL signal: Price touches upper band AND MACD histogram is below signal line
-                        if current_close >= current_upper and current_hist < current_signal:
+                        # SELL signal: Price touches upper band AND MACD confirms bearish
+                        if (current_close >= current_upper and 
+                            (macd_line_current < signal_line_current or 
+                             (macd_line_prev >= signal_line_prev and macd_line_current < signal_line_current))):
                             direction = "SELL"
                             price = mt5.symbol_info_tick(sym).bid
+                            print(f"🔻 Potential SELL signal for {sym}")
+                            print(f"  Close: {current_close:.5f} >= Upper: {current_upper:.5f}")
+                            print(f"  MACD: {macd_line_current:.5f} < Signal: {signal_line_current:.5f}")
                         
-                        # BUY signal: Price touches lower band AND MACD histogram is above signal line
-                        elif current_close <= current_lower and current_hist > current_signal:
+                        # BUY signal: Price touches lower band AND MACD confirms bullish
+                        elif (current_close <= current_lower and 
+                              (macd_line_current > signal_line_current or 
+                               (macd_line_prev <= signal_line_prev and macd_line_current > signal_line_current))):
                             direction = "BUY"
                             price = mt5.symbol_info_tick(sym).ask
+                            print(f"🔺 Potential BUY signal for {sym}")
+                            print(f"  Close: {current_close:.5f} <= Lower: {current_lower:.5f}")
+                            print(f"  MACD: {macd_line_current:.5f} > Signal: {signal_line_current:.5f}")
                         
                         if direction:
                             # Skip if price validation fails
@@ -1057,9 +1179,9 @@ if __name__ == "__main__":
                             indicators = {
                                 'donchian_upper': current_upper,
                                 'donchian_lower': current_lower,
-                                'macd_main': macd_line.iloc[-1],
-                                'macd_signal': current_signal,
-                                'macd_hist': current_hist,
+                                'macd_main': macd_line_current,
+                                'macd_signal': signal_line_current,
+                                'macd_hist': histogram.iloc[-1],
                                 'rsi': current_rsi,
                                 'rsi_status': rsi_status,
                                 'sma_9': current_sma_9,
@@ -1117,9 +1239,10 @@ if __name__ == "__main__":
                         # 1. Opposite Donchian band touch
                         try:
                             rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+10)
-                            if rates and len(rates) >= DONCHIAN_PERIOD:
+                            if rates is not None and len(rates) >= DONCHIAN_PERIOD:
                                 df = pd.DataFrame(rates)
                                 donchian_upper, donchian_lower = get_donchian(df)
+                                # FIX: Get last value from indicator series
                                 current_upper = donchian_upper.iloc[-1]
                                 current_lower = donchian_lower.iloc[-1]
                                 
@@ -1133,22 +1256,26 @@ if __name__ == "__main__":
                         # 2. MACD crossover
                         if not closure_reason:
                             try:
-                                rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, 3)
-                                if rates and len(rates) >= 2:
+                                rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, 50)
+                                if rates is not None and len(rates) >= 2:
                                     df = pd.DataFrame(rates)
-                                    _, signal_line, histogram = get_macd(df)
-                                    current_hist = histogram.iloc[-1]
-                                    current_signal = signal_line.iloc[-1]
-                                    prev_hist = histogram.iloc[-2]
-                                    prev_signal = signal_line.iloc[-2]
+                                    macd_line, signal_line, _ = get_macd(df)
+                                    
+                                    # FIX: Get last two values from indicator series
+                                    macd_line_current = macd_line.iloc[-1]
+                                    macd_line_prev = macd_line.iloc[-2]
+                                    signal_line_current = signal_line.iloc[-1]
+                                    signal_line_prev = signal_line.iloc[-2]
                                     
                                     # Check for crossover
                                     if tr['dir'] == "BUY":
-                                        if prev_hist > prev_signal and current_hist < current_signal:
-                                            closure_reason = "MACD histogram crossed below signal line"
+                                        if (macd_line_prev >= signal_line_prev and 
+                                            macd_line_current < signal_line_current):
+                                            closure_reason = "MACD line crossed below signal line"
                                     else:  # SELL
-                                        if prev_hist < prev_signal and current_hist > current_signal:
-                                            closure_reason = "MACD histogram crossed above signal line"
+                                        if (macd_line_prev <= signal_line_prev and 
+                                            macd_line_current > signal_line_current):
+                                            closure_reason = "MACD line crossed above signal line"
                             except Exception as e:
                                 print(f"⚠️ Error checking MACD for {sym}: {e}")
                         

@@ -1,0 +1,220 @@
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 00:55:25
+Trade ID: Jump 25 Index_20250618212539
+Symbol: Jump 25 Index
+Direction: SELL
+Entry: 132186.09
+Exit: 131073.93742
+Outcome: TP3
+Pips: 1112.15258
+--- Indicators ---
+Donchian Upper: 132187.36000
+Donchian Lower: 131762.55000
+MACD Main: 73.00299
+MACD Signal: 41.83311
+MACD Hist: 31.16988
+RSI: 73.39
+RSI Status: Overbought
+SMA 9: 132062.38111
+SMA 21: 131943.43429
+SMA Alignment: Bullish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 01:01:31
+Trade ID: AUDJPY_20250617023032
+Symbol: AUDJPY
+Direction: SELL
+Entry: 94.541
+Exit: 94.09622
+Outcome: TP4
+Pips: 0.44478
+--- Indicators ---
+Donchian Upper: 94.55200
+Donchian Lower: 94.44700
+MACD Main: 0.01599
+MACD Signal: 0.01366
+MACD Hist: 0.00233
+RSI: 61.71
+RSI Status: Neutral
+SMA 9: 94.52478
+SMA 21: 94.50519
+SMA Alignment: Bullish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 08:22:06
+Trade ID: Volatility 10 Index_20250618213048
+Symbol: Volatility 10 Index
+Direction: BUY
+Entry: 6382.457
+Exit: 6379.32433
+Outcome: SL after TP (Win)
+Pips: -3.13267
+--- Indicators ---
+Donchian Upper: 6391.67700
+Donchian Lower: 6382.27900
+MACD Main: -1.57754
+MACD Signal: -1.00137
+MACD Hist: -0.57617
+RSI: 25.27
+RSI Status: Oversold
+SMA 9: 6385.60778
+SMA 21: 6387.91557
+SMA Alignment: Bearish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 08:22:39
+Trade ID: Volatility 75 Index_20250618213505
+Symbol: Volatility 75 Index
+Direction: BUY
+Entry: 106002.01
+Exit: 109445.49676
+Outcome: TP4
+Pips: 3443.48676
+--- Indicators ---
+Donchian Upper: 106783.94000
+Donchian Lower: 105971.03000
+MACD Main: -132.43195
+MACD Signal: -96.13996
+MACD Hist: -36.29199
+RSI: 35.05
+RSI Status: Neutral
+SMA 9: 106145.76111
+SMA 21: 106353.13333
+SMA Alignment: Bearish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 08:23:13
+Trade ID: EURJPY_20250618205040
+Symbol: EURJPY
+Direction: SELL
+Entry: 166.626
+Exit: 166.64733
+Outcome: SL after TP (Win)
+Pips: -0.02133
+--- Indicators ---
+Donchian Upper: 166.63600
+Donchian Lower: 166.57200
+MACD Main: 0.01248
+MACD Signal: 0.01034
+MACD Hist: 0.00214
+RSI: 66.06
+RSI Status: Neutral
+SMA 9: 166.61456
+SMA 21: 166.60157
+SMA Alignment: Bullish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 08:23:46
+Trade ID: GBPJPY_20250618205145
+Symbol: GBPJPY
+Direction: SELL
+Entry: 194.808
+Exit: 194.84367
+Outcome: SL after TP (Win)
+Pips: -0.03567
+--- Indicators ---
+Donchian Upper: 194.81700
+Donchian Lower: 194.71000
+MACD Main: 0.02061
+MACD Signal: 0.01355
+MACD Hist: 0.00706
+RSI: 77.85
+RSI Status: Overbought
+SMA 9: 194.75867
+SMA 21: 194.74029
+SMA Alignment: Bullish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 08:24:19
+Trade ID: XAGUSD_20250618200059
+Symbol: XAGUSD
+Direction: BUY
+Entry: 36.593
+Exit: 36.54933
+Outcome: SL after TP (Win)
+Pips: -0.04367
+--- Indicators ---
+Donchian Upper: 36.70700
+Donchian Lower: 36.57600
+MACD Main: -0.01672
+MACD Signal: -0.01522
+MACD Hist: -0.00150
+RSI: 37.17
+RSI Status: Neutral
+SMA 9: 36.60400
+SMA 21: 36.62852
+SMA Alignment: Bearish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 10:12:07
+Trade ID: Jump 25 Index_20250618212539
+Symbol: Jump 25 Index
+Direction: SELL
+Entry: 132186.09
+Exit: 132327.69333
+Outcome: SL after TP (Win)
+Pips: -141.60333
+--- Indicators ---
+Donchian Upper: 132187.36000
+Donchian Lower: 131762.55000
+MACD Main: 73.00299
+MACD Signal: 41.83311
+MACD Hist: 31.16988
+RSI: 73.39
+RSI Status: Overbought
+SMA 9: 132062.38111
+SMA 21: 131943.43429
+SMA Alignment: Bullish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 10:42:34
+Trade ID: Volatility 100 (1s) Index_20250618205450
+Symbol: Volatility 100 (1s) Index
+Direction: SELL
+Entry: 502.64
+Exit: 504.11667
+Outcome: SL after TP (Win)
+Pips: -1.47667
+--- Indicators ---
+Donchian Upper: 502.64000
+Donchian Lower: 498.21000
+MACD Main: 0.56622
+MACD Signal: 0.52338
+MACD Hist: 0.04284
+RSI: 62.32
+RSI Status: Neutral
+SMA 9: 501.08333
+SMA 21: 501.05571
+SMA Alignment: Bullish
+=====================
+
+=== Trade Performance ===
+Timestamp: 2025-06-19 11:00:01
+Trade ID: CHFJPY_20250617022451
+Symbol: CHFJPY
+Direction: SELL
+Entry: 178.047
+Exit: 178.09733
+Outcome: SL after TP (Win)
+Pips: -0.05033
+--- Indicators ---
+Donchian Upper: 178.05800
+Donchian Lower: 177.90700
+MACD Main: 0.02138
+MACD Signal: 0.01080
+MACD Hist: 0.01058
+RSI: 68.43
+RSI Status: Neutral
+SMA 9: 178.00311
+SMA 21: 177.97129
+SMA Alignment: Bullish
+=====================
