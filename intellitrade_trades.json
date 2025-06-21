@@ -1,131 +1,490 @@
 {
     "Volatility 25 Index": {
-        "id": "Volatility 25 Index_20250620222137",
+        "id": "Volatility 25 Index_20250621184613",
         "symbol": "Volatility 25 Index",
         "dir": "SELL",
-        "entry": 2825.428,
+        "entry": 2778.289,
         "tps": [
-            2820.597,
-            2817.61144,
-            2812.78044,
-            2804.96388
+            2771.66,
+            2767.56328,
+            2760.93428,
+            2750.20856
         ],
-        "sl": 2827.03833,
-        "status": "closed-tp4",
-        "hit": [
-            2820.597,
-            2817.61144,
-            2812.78044,
-            2804.96388
-        ],
-        "high_touch": 2825.428,
-        "low_touch": 2820.597
-    },
-    "Volatility 75 Index": {
-        "id": "Volatility 75 Index_20250620222211",
-        "symbol": "Volatility 75 Index",
-        "dir": "BUY",
-        "entry": 108273.19,
-        "tps": [
-            109167.26,
-            109719.79526,
-            110613.86526,
-            112060.47052
-        ],
-        "sl": 107975.16667,
-        "status": "closed-sl",
-        "hit": [
-            109167.26
-        ],
-        "high_touch": 109136.28,
-        "low_touch": 108242.21
-    },
-    "Volatility 50 (1s) Index": {
-        "id": "Volatility 50 (1s) Index_20250620222516",
-        "symbol": "Volatility 50 (1s) Index",
-        "dir": "SELL",
-        "entry": 214375.18,
-        "tps": [
-            213314.93,
-            212659.6955,
-            211599.4455,
-            209883.961
-        ],
-        "sl": 214728.59667,
-        "status": "closed-sl",
-        "hit": [],
-        "high_touch": 214375.18,
-        "low_touch": 213314.93
-    },
-    "Volatility 50 Index": {
-        "id": "Volatility 50 Index_20250620224152",
-        "symbol": "Volatility 50 Index",
-        "dir": "SELL",
-        "entry": 140.151,
-        "tps": [
-            139.0962,
-            138.44433,
-            137.38953,
-            135.68287
-        ],
-        "sl": 140.5026,
-        "status": "closed-sl",
-        "hit": [],
-        "high_touch": 140.151,
-        "low_touch": 139.0962
-    },
-    "Jump 75 Index": {
-        "id": "Jump 75 Index_20250620223402",
-        "symbol": "Jump 75 Index",
-        "dir": "SELL",
-        "entry": 16753.69,
-        "tps": [
-            16563.74,
-            16446.3509,
-            16256.4009,
-            15949.0618
-        ],
-        "sl": 16817.00667,
+        "sl": 2780.49867,
         "status": "open",
-        "hit": [
-            16563.74,
-            16446.3509
-        ],
-        "high_touch": 16753.93,
-        "low_touch": 16563.98
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 2778.289,
+            "donchian_lower": 2771.66,
+            "macd_main": 1.6222063652035104,
+            "macd_signal": 1.326962724324338,
+            "macd_hist": 0.2952436408791723,
+            "rsi": 71.3068653220011,
+            "rsi_status": "Overbought",
+            "sma_9": 2775.9657777777775,
+            "sma_21": 2774.393,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
     },
     "Volatility 25 (1s) Index": {
-        "id": "Volatility 25 (1s) Index_20250620223914",
+        "id": "Volatility 25 (1s) Index_20250621171349",
         "symbol": "Volatility 25 (1s) Index",
         "dir": "BUY",
-        "entry": 622498.71,
+        "entry": 619233.83,
         "tps": [
-            623223.15,
-            623670.85392,
-            624395.29392,
-            625567.43784
+            621144.98,
+            622326.0707,
+            624237.2207,
+            627329.4614
         ],
-        "sl": 622257.23,
-        "status": "closed-sl",
+        "sl": 618596.78,
+        "status": "open",
+        "hit": [
+            621144.98
+        ],
+        "indicators": {
+            "donchian_upper": 621102.27,
+            "donchian_lower": 619191.12,
+            "macd_main": -293.7443428589031,
+            "macd_signal": -162.3919625035167,
+            "macd_hist": -131.3523803553864,
+            "rsi": 29.85649255767771,
+            "rsi_status": "Oversold",
+            "sma_9": 619827.8466666667,
+            "sma_21": 620330.7942857143,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 10 Index": {
+        "id": "Volatility 10 Index_20250621160524",
+        "symbol": "Volatility 10 Index",
+        "dir": "BUY",
+        "entry": 6362.971,
+        "tps": [
+            6371.326,
+            6376.48939,
+            6384.84439,
+            6398.36278
+        ],
+        "sl": 6360.186,
+        "status": "closed",
+        "hit": [
+            6371.326
+        ],
+        "indicators": {
+            "donchian_upper": 6371.148,
+            "donchian_lower": 6362.793,
+            "macd_main": -1.6748809294422244,
+            "macd_signal": -1.4579674139659864,
+            "macd_hist": -0.21691351547623805,
+            "rsi": 26.49527309801053,
+            "rsi_status": "Oversold",
+            "sma_9": 6365.220777777777,
+            "sma_21": 6366.448095238095,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 10 (1s) Index": {
+        "id": "Volatility 10 (1s) Index_20250621180153",
+        "symbol": "Volatility 10 (1s) Index",
+        "dir": "BUY",
+        "entry": 9081.5,
+        "tps": [
+            9089.38,
+            9094.24984,
+            9102.12984,
+            9114.87968
+        ],
+        "sl": 9078.87333,
+        "status": "closed",
         "hit": [],
-        "high_touch": 623180.44,
-        "low_touch": 622456.0
+        "indicators": {
+            "donchian_upper": 9089.13,
+            "donchian_lower": 9081.25,
+            "macd_main": -1.8985403939168464,
+            "macd_signal": -1.8353493109299979,
+            "macd_hist": -0.0631910829868485,
+            "rsi": 35.246846555701566,
+            "rsi_status": "Neutral",
+            "sma_9": 9082.78,
+            "sma_21": 9084.680000000002,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 100 (1s) Index": {
+        "id": "Volatility 100 (1s) Index_20250621154253",
+        "symbol": "Volatility 100 (1s) Index",
+        "dir": "BUY",
+        "entry": 511.54,
+        "tps": [
+            514.78,
+            516.78232,
+            520.02232,
+            525.26464
+        ],
+        "sl": 510.46,
+        "status": "open",
+        "hit": [
+            514.78,
+            516.78232
+        ],
+        "indicators": {
+            "donchian_upper": 514.63,
+            "donchian_lower": 511.39,
+            "macd_main": -0.6500457375431097,
+            "macd_signal": -0.5604845909410411,
+            "macd_hist": -0.0895611466020686,
+            "rsi": 31.890993710283894,
+            "rsi_status": "Neutral",
+            "sma_9": 513.0911111111112,
+            "sma_21": 513.2795238095239,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 100 Index": {
+        "id": "Volatility 100 Index_20250621154357",
+        "symbol": "Volatility 100 Index",
+        "dir": "SELL",
+        "entry": 1323.73,
+        "tps": [
+            1311.59,
+            1304.08748,
+            1291.94748,
+            1272.30496
+        ],
+        "sl": 1327.77667,
+        "status": "open",
+        "hit": [
+            1311.59,
+            1304.08748,
+            1291.94748
+        ],
+        "indicators": {
+            "donchian_upper": 1323.73,
+            "donchian_lower": 1311.59,
+            "macd_main": 1.9572831530622352,
+            "macd_signal": 1.6003874947400747,
+            "macd_hist": 0.3568956583221605,
+            "rsi": 66.42176485922894,
+            "rsi_status": "Neutral",
+            "sma_9": 1318.493333333333,
+            "sma_21": 1316.4761904761904,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 50 Index": {
+        "id": "Volatility 50 Index_20250621184133",
+        "symbol": "Volatility 50 Index",
+        "dir": "SELL",
+        "entry": 140.1446,
+        "tps": [
+            138.7041,
+            137.81387,
+            136.37337,
+            134.04264
+        ],
+        "sl": 140.62477,
+        "status": "open",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 140.1446,
+            "donchian_lower": 138.7041,
+            "macd_main": 0.3463551197286563,
+            "macd_signal": 0.3113796699124783,
+            "macd_hist": 0.034975449816178006,
+            "rsi": 80.32593452784658,
+            "rsi_status": "Overbought",
+            "sma_9": 139.83825555555555,
+            "sma_21": 139.48615714285714,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 75 Index": {
+        "id": "Jump 75 Index_20250621155456",
+        "symbol": "Jump 75 Index",
+        "dir": "BUY",
+        "entry": 16674.87,
+        "tps": [
+            16845.37,
+            16950.739,
+            17121.239,
+            17397.108
+        ],
+        "sl": 16618.03667,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 16842.18,
+            "donchian_lower": 16671.68,
+            "macd_main": -29.141597104164248,
+            "macd_signal": -25.116960390034635,
+            "macd_hist": -4.024636714129613,
+            "rsi": 29.93595661850007,
+            "rsi_status": "Oversold",
+            "sma_9": 16703.998888888887,
+            "sma_21": 16742.16904761905,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
     },
     "Jump 50 Index": {
-        "id": "Jump 50 Index_20250620224049",
+        "id": "Jump 50 Index_20250621170056",
         "symbol": "Jump 50 Index",
         "dir": "BUY",
-        "entry": 35941.2,
+        "entry": 36045.52,
         "tps": [
-            36126.6,
-            36241.1772,
-            36426.5772,
-            36726.5544
+            36295.64,
+            36450.21416,
+            36700.33416,
+            37105.02832
         ],
-        "sl": 35879.4,
-        "status": "closed-sl",
+        "sl": 35962.14667,
+        "status": "open",
         "hit": [],
-        "high_touch": 36121.02,
-        "low_touch": 35935.62
+        "indicators": {
+            "donchian_upper": 36290.05,
+            "donchian_lower": 36039.93,
+            "macd_main": -36.53451887600386,
+            "macd_signal": -25.629990483654712,
+            "macd_hist": -10.904528392349146,
+            "rsi": 35.59689616903623,
+            "rsi_status": "Neutral",
+            "sma_9": 36100.08111111111,
+            "sma_21": 36158.86,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 10 Index": {
+        "id": "Jump 10 Index_20250621170945",
+        "symbol": "Jump 10 Index",
+        "dir": "BUY",
+        "entry": 87682.07,
+        "tps": [
+            87830.84,
+            87922.77986,
+            88071.54986,
+            88312.25972
+        ],
+        "sl": 87632.48,
+        "status": "open",
+        "hit": [
+            87830.84
+        ],
+        "indicators": {
+            "donchian_upper": 87828.29,
+            "donchian_lower": 87679.52,
+            "macd_main": -28.855416525533656,
+            "macd_signal": -17.7802434071572,
+            "macd_hist": -11.075173118376455,
+            "rsi": 21.73906307984244,
+            "rsi_status": "Oversold",
+            "sma_9": 87769.07888888888,
+            "sma_21": 87784.33142857143,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 75 (1s) Index": {
+        "id": "Volatility 75 (1s) Index_20250621165428",
+        "symbol": "Volatility 75 (1s) Index",
+        "dir": "SELL",
+        "entry": 5266.01,
+        "tps": [
+            5219.9,
+            5191.40402,
+            5145.29402,
+            5070.68804
+        ],
+        "sl": 5281.38,
+        "status": "open",
+        "hit": [
+            5219.9,
+            5191.40402
+        ],
+        "indicators": {
+            "donchian_upper": 5266.01,
+            "donchian_lower": 5219.9,
+            "macd_main": 5.545462224608855,
+            "macd_signal": 2.9845115786799186,
+            "macd_hist": 2.560950645928936,
+            "rsi": 64.17503404468971,
+            "rsi_status": "Neutral",
+            "sma_9": 5256.984444444444,
+            "sma_21": 5245.34380952381,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 100 Index": {
+        "id": "Jump 100 Index_20250621162404",
+        "symbol": "Jump 100 Index",
+        "dir": "BUY",
+        "entry": 3525.86,
+        "tps": [
+            3562.12,
+            3584.52868,
+            3620.78868,
+            3679.45736
+        ],
+        "sl": 3513.77333,
+        "status": "closed",
+        "hit": [
+            3562.12
+        ],
+        "indicators": {
+            "donchian_upper": 3561.15,
+            "donchian_lower": 3524.89,
+            "macd_main": -5.573060057376551,
+            "macd_signal": -3.762614209416763,
+            "macd_hist": -1.8104458479597882,
+            "rsi": 35.01455038165291,
+            "rsi_status": "Neutral",
+            "sma_9": 3530.9977777777776,
+            "sma_21": 3541.3614285714284,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Step Index": {
+        "id": "Step Index_20250621181412",
+        "symbol": "Step Index",
+        "dir": "BUY",
+        "entry": 8525.0,
+        "tps": [
+            8532.5,
+            8537.135,
+            8544.635,
+            8556.77
+        ],
+        "sl": 8522.5,
+        "status": "open",
+        "hit": [
+            8532.5
+        ],
+        "indicators": {
+            "donchian_upper": 8532.3,
+            "donchian_lower": 8524.8,
+            "macd_main": -1.6067402040025627,
+            "macd_signal": -1.196591207430552,
+            "macd_hist": -0.41014899657201065,
+            "rsi": 23.531948644753882,
+            "rsi_status": "Oversold",
+            "sma_9": 8526.022222222222,
+            "sma_21": 8528.714285714286,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 50 (1s) Index": {
+        "id": "Volatility 50 (1s) Index_20250621170707",
+        "symbol": "Volatility 50 (1s) Index",
+        "dir": "SELL",
+        "entry": 221943.3,
+        "tps": [
+            221114.25,
+            220601.8971,
+            219772.8471,
+            218431.4442
+        ],
+        "sl": 222219.65,
+        "status": "closed",
+        "hit": [
+            221114.25
+        ],
+        "indicators": {
+            "donchian_upper": 221943.3,
+            "donchian_lower": 221114.25,
+            "macd_main": 167.84975085809128,
+            "macd_signal": 154.45451626269352,
+            "macd_hist": 13.395234595397767,
+            "rsi": 64.34545777309326,
+            "rsi_status": "Neutral",
+            "sma_9": 221568.49,
+            "sma_21": 221486.0276190476,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Volatility 75 Index": {
+        "id": "Volatility 75 Index_20250621171826",
+        "symbol": "Volatility 75 Index",
+        "dir": "BUY",
+        "entry": 107971.7,
+        "tps": [
+            109038.74,
+            109698.17072,
+            110765.21072,
+            112491.68144
+        ],
+        "sl": 107616.02,
+        "status": "open",
+        "hit": [
+            109038.74
+        ],
+        "indicators": {
+            "donchian_upper": 109007.76,
+            "donchian_lower": 107940.72,
+            "macd_main": -225.04894484754186,
+            "macd_signal": -223.05628296142666,
+            "macd_hist": -1.9926618861152008,
+            "rsi": 34.341449216075006,
+            "rsi_status": "Neutral",
+            "sma_9": 108092.35333333333,
+            "sma_21": 108332.11142857143,
+            "sma_alignment": "Bearish"
+        },
+        "closure_advised": false,
+        "simulated": false
+    },
+    "Jump 25 Index": {
+        "id": "Jump 25 Index_20250621174245",
+        "symbol": "Jump 25 Index",
+        "dir": "SELL",
+        "entry": 130596.32,
+        "tps": [
+            129973.63,
+            129588.80758,
+            128966.11758,
+            127958.60516
+        ],
+        "sl": 130803.88333,
+        "status": "closed",
+        "hit": [],
+        "indicators": {
+            "donchian_upper": 130597.59,
+            "donchian_lower": 129974.9,
+            "macd_main": 145.91377253811515,
+            "macd_signal": 129.54595388852337,
+            "macd_hist": 16.367818649591783,
+            "rsi": 77.05048375671973,
+            "rsi_status": "Overbought",
+            "sma_9": 130500.53111111111,
+            "sma_21": 130325.63333333333,
+            "sma_alignment": "Bullish"
+        },
+        "closure_advised": false,
+        "simulated": false
     }
 }
