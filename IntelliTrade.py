@@ -16,10 +16,11 @@ import pyperclip
 import win32clipboard
 import csv
 import requests
+import numpy as np
 from datetime import datetime, timedelta, timezone
 
 # ===== TESTING CONFIG =====
-TEST_MODE = False  # Set to False in production
+TEST_MODE = False # Set to False in production
 # ==========================
 
 # ===== ASSET FILTER CONFIG =====
@@ -220,14 +221,17 @@ def setup_whatsapp():
 
 # === CONFIG ===
 MT5_PATH = r"C:\Program Files\MetaTrader 5 Terminal\terminal64.exe"
-TIMEFRAME = mt5.TIMEFRAME_M30  # Changed to M30 timeframe
-DONCHIAN_PERIOD = 14           # Optimized period
-MACD_FAST, MACD_SLOW, MACD_SIGNAL = 8, 17, 9  # Optimized parameters
+TIMEFRAME = mt5.TIMEFRAME_M1
+DONCHIAN_PERIOD = 20
+MACD_FAST, MACD_SLOW, MACD_SIGNAL = 12, 26, 9
+SMA_PERIOD_SHORT = 9
+SMA_PERIOD_LONG = 21
+RSI_PERIOD = 14
 FIB_LEVELS = [100, 161.8, 261.8, 423.6]
 RR = 3
 TRACK_FILE = "intellitrade_trades.json"
-TOUCH_TOLERANCE = 0.0003       # 3 pips tolerance
-MIN_DAILY_RANGE = 0.005        # 0.5% minimum daily range
+DAILY_SUMMARY_FILE = "daily_trading_summary.txt"
+TRADE_PERFORMANCE_DIR = "trade_performance_data"
 
 # Strategy-agnostic reasons
 REASONS = [
@@ -242,14 +246,6 @@ REASONS = [
     "System convergence on directional opportunity",
     "Algorithmic edge detected in current market conditions"
 ]
-
-# Confidence levels for signals
-CONFIDENCE_LEVELS = {
-    1: "High Confidence",
-    2: "Medium Confidence",
-    3: "Very High Confidence",
-    4: "Caution Advised"
-}
 
 # === TRACKING ===
 def load_trades():
@@ -367,93 +363,148 @@ def validate_prices(entry, tps, sl, direction, symbol, last_close):
     return True
 
 # === TRADE LOGGING ===
-def log_trade_performance(symbol, direction, entry, exit_price, outcome, pips, tid, high_touch, low_touch, tp_hit_count=0):
-    """Log trade performance to CSV with win/loss tracking"""
-    # Validate all prices before logging
-    for price in [entry, exit_price, high_touch, low_touch]:
-        if not is_valid_price(price, symbol):
-            print(f"⚠️ Invalid price {price} for {symbol} - skipping log")
-            return
+class TradePerformance:
+    def __init__(self):
+        # Create directory for trade performance data
+        os.makedirs(TRADE_PERFORMANCE_DIR, exist_ok=True)
+        
+        # Initialize daily summary
+        self.today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        self.trade_count = 0
+        self.wins = 0
+        self.losses = 0
+        self.total_pips = 0
+        self.max_win = 0
+        self.max_loss = 0
+        self.tp_hits = 0
+        self.sl_hits = 0
+        self.win_streak = 0
+        self.loss_streak = 0
+        self.current_win_streak = 0
+        self.current_loss_streak = 0
+        
+    def log_trade(self, trade_data):
+        """Log detailed trade performance to CSV"""
+        # Validate all prices before logging
+        for price in [trade_data['Entry'], trade_data['Exit']]:
+            if not is_valid_price(price, trade_data['Symbol']):
+                print(f"⚠️ Invalid price {price} for {trade_data['Symbol']} - skipping log")
+                return
+                
+        filename = os.path.join(TRADE_PERFORMANCE_DIR, f"trade_performance_{self.today}.csv")
+        file_exists = os.path.isfile(filename)
+        
+        with open(filename, 'a', newline='', encoding='utf-8') as f:
+            fieldnames = [
+                'Timestamp', 'TradeID', 'Symbol', 'Direction', 'Entry', 'Exit', 
+                'Outcome', 'Pips', 'DonchianUpper', 'DonchianLower',
+                'MACD_Main', 'MACD_Signal', 'MACD_Hist', 
+                'RSI', 'RSI_Status', 'SMA_9', 'SMA_21', 'SMA_Alignment'
+            ]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             
-    filename = f"trade_performance_{symbol}.csv"
-    file_exists = os.path.isfile(filename)
+            if not file_exists:
+                writer.writeheader()
+            
+            writer.writerow(trade_data)
+        
+        # Update daily summary stats
+        self.trade_count += 1
+        pips = trade_data['Pips']
+        
+        if trade_data['Outcome'] != "SL":
+            self.wins += 1
+            self.total_pips += pips
+            self.current_win_streak += 1
+            self.current_loss_streak = 0
+            if pips > self.max_win:
+                self.max_win = pips
+            if trade_data['Outcome'].startswith("TP"):
+                self.tp_hits += 1
+        else:
+            self.losses += 1
+            self.total_pips += pips  # pips is negative for losses
+            self.current_loss_streak += 1
+            self.current_win_streak = 0
+            if pips < self.max_loss:
+                self.max_loss = pips
+            self.sl_hits += 1
+        
+        if self.current_win_streak > self.win_streak:
+            self.win_streak = self.current_win_streak
+        if self.current_loss_streak > self.loss_streak:
+            self.loss_streak = self.current_loss_streak
+            
+        # Update daily summary file
+        self.update_daily_summary()
     
-    with open(filename, 'a', newline='') as f:
-        fieldnames = [
-            'Timestamp', 'TradeID', 'Direction', 'Entry', 'Exit', 
-            'Outcome', 'Pips', 'HighTouch', 'LowTouch', 'TPsHit',
-            'TradeResult'
-        ]
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+    def update_daily_summary(self):
+        """Update daily summary file with current statistics"""
+        win_rate = (self.wins / self.trade_count * 100) if self.trade_count > 0 else 0
+        profit_factor = (self.wins / self.losses) if self.losses > 0 else float('inf')
+        avg_win = (self.total_pips / self.wins) if self.wins > 0 else 0
+        avg_loss = (abs(self.total_pips) / self.losses) if self.losses > 0 else 0
         
-        if not file_exists:
-            writer.writeheader()
+        summary = f"""
+=== DAILY TRADING SUMMARY ===
+Date: {self.today}
+Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}
+Total Trades: {self.trade_count}
+Wins: {self.wins} ({win_rate:.2f}%)
+Losses: {self.losses}
+Profit Factor: {profit_factor:.2f}
+Total Pips: {self.total_pips:.2f}
+Avg Pips/Trade: {self.total_pips/self.trade_count:.2f if self.trade_count > 0 else 0}
+Max Win: {self.max_win:.2f} pips
+Max Loss: {self.max_loss:.2f} pips
+TPs Hit: {self.tp_hits}
+SLs Hit: {self.sl_hits}
+Current Win Streak: {self.current_win_streak}
+Current Loss Streak: {self.current_loss_streak}
+Longest Win Streak: {self.win_streak}
+Longest Loss Streak: {self.loss_streak}
+Avg Win: {avg_win:.2f} pips
+Avg Loss: {avg_loss:.2f} pips
+"""
         
-        # Determine trade result based on outcome and TP hits
-        trade_result = "N/A"
-        if outcome.startswith("TP"):
-            trade_result = "WIN"
-        elif outcome == "SL":
-            if tp_hit_count > 0:
-                trade_result = "WIN (Partial)"
-            else:
-                trade_result = "LOSS"
-        elif outcome == "ALL_TP":
-            trade_result = "WIN (Full)"
-            
-        writer.writerow({
-            'Timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
-            'TradeID': tid,
-            'Direction': direction,
-            'Entry': entry,
-            'Exit': exit_price,
-            'Outcome': outcome,
-            'Pips': pips,
-            'HighTouch': high_touch,
-            'LowTouch': low_touch,
-            'TPsHit': tp_hit_count,
-            'TradeResult': trade_result
-        })
+        with open(DAILY_SUMMARY_FILE, 'w') as f:
+            f.write(summary)
+        print(f"✅ Updated daily summary at {DAILY_SUMMARY_FILE}")
 
 # === INDICATORS ===
-def get_macd_sig_hist(df):
-    macd = df['close'].ewm(span=MACD_FAST, adjust=False).mean() - df['close'].ewm(span=MACD_SLOW, adjust=False).mean()
-    sig = macd.ewm(span=MACD_SIGNAL, adjust=False).mean()
-    return macd, sig, macd - sig
-
 def get_donchian(df):
     up = df['high'].rolling(DONCHIAN_PERIOD).max()
     low = df['low'].rolling(DONCHIAN_PERIOD).min()
     return up, low
 
-def get_rsi(df, period=14):
-    """Calculate RSI without revealing it in messages"""
+def get_macd(df):
+    macd_line = df['close'].ewm(span=MACD_FAST, adjust=False).mean() - df['close'].ewm(span=MACD_SLOW, adjust=False).mean()
+    signal_line = macd_line.ewm(span=MACD_SIGNAL, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
+def get_rsi(df, period=RSI_PERIOD):
     delta = df['close'].diff()
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
     
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
+    avg_gain = gain.ewm(alpha=1/period).mean()
+    avg_loss = loss.ewm(alpha=1/period).mean()
     
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
 def get_sma(df, period):
-    """Calculate Simple Moving Average"""
     return df['close'].rolling(period).mean()
 
-def calc_tps_sl(entry, direction, high_touch, low_touch):
-    """Calculate realistic profit targets"""
-    # 1. Calculate volatility-adjusted channel height
-    channel_height = abs(high_touch - low_touch)
-    
-    # 2. Cap channel height at 5% of average price
-    avg_price = (high_touch + low_touch) / 2
+def calc_tps_sl(entry, direction, donchian_upper, donchian_lower):
+    """Calculate profit targets based on Donchian channel height"""
+    channel_height = abs(donchian_upper - donchian_lower)
+    avg_price = (donchian_upper + donchian_lower) / 2
     max_allowed = avg_price * 0.05
     channel_height = min(channel_height, max_allowed)
     
-    # 3. Calculate proportional targets
     tps = []
     for lvl in FIB_LEVELS:
         extension = channel_height * (lvl/100)
@@ -463,7 +514,6 @@ def calc_tps_sl(entry, direction, high_touch, low_touch):
             tp = entry - extension
         tps.append(round(tp, 5))
     
-    # 4. Calculate SL based on TP1 distance
     tp1_distance = abs(tps[0] - entry)
     risk_distance = tp1_distance / RR
     
@@ -475,36 +525,28 @@ def calc_tps_sl(entry, direction, high_touch, low_touch):
     return tps, sl
 
 # === MESSAGE GENERATION ===
-def generate_signal_message(sym, direction, price, tps, sl, tid, confidence_level, timeframe="M30"):
-    """Generate signal message without strategy details"""
+def generate_signal_message(sym, direction, price, tps, sl, tid, indicators):
+    """Generate signal message with strategy details"""
     time_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
-    confidence = CONFIDENCE_LEVELS.get(confidence_level, "High Confidence")
     
-    # Strategy-agnostic commentary
-    insight_comments = [
-        "Strong momentum alignment detected in our analysis",
-        "System shows favorable risk-reward configuration",
-        "Quantitative models indicate high-probability setup",
-        "Market structure supports directional bias"
-    ]
+    # Generate TP lines with the exact format in the example
+    tp_lines = "\n".join([
+        f"🎯 TP1 → {tps[0]}",
+        f"🎯 TP2 → {tps[1]}",
+        f"🎯 TP3 → {tps[2]}",
+        f"🎯 TP4 → {tps[3]}"  
+    ])
     
-    # Generic market observations
-    market_context = [
-        "Volatility conditions favorable for this approach",
-        "Price action confirms our algorithmic triggers",
-        "Timing models show optimal entry window",
-        "Liquidity profile supports trade thesis"
-    ]
+    # Select two random execution insights
+    insight_lines = "\n".join(random.sample(REASONS, 2))
     
-    tp_lines = "\n".join([f"🎯 TP{i+1} → {tp}" for i, tp in enumerate(tps)])
-    
-    msg = f"""
-📈 IntelliTrade Signal Alert ({confidence})
+    return f"""
+📈 IntelliTrade Signal Alert (High Confidence)
 ━━━━━━━━━━━━━━━━━━━━━━  
 🔹 Asset: {sym}  
 📥 Direction: {direction}  
 🕒 Time: {time_str}  
-⏳ Timeframe: {timeframe}  
+⏳ Timeframe: M30  
 
 💵 Entry: {price}  
 {tp_lines}  
@@ -513,12 +555,10 @@ def generate_signal_message(sym, direction, price, tps, sl, tid, confidence_leve
 
 ━━━━━━━━━━━━━━━━━━━━━━  
 📊 Execution Insight:  
-{random.choice(insight_comments)}  
-{random.choice(market_context)}  
+{insight_lines}  
 ━━━━━━━━━━━━━━━━━━━━━━  
 🚀 _Powered by IntelliTrade Alpha Engine_
 """
-    return msg
 
 # === TRADE UPDATE MESSAGES ===
 def send_trade_update(driver, wait, symbol, event_type, details, tid):
@@ -551,7 +591,7 @@ def send_trade_update(driver, wait, symbol, event_type, details, tid):
     
     return send_whatsapp_message(driver, wait, message)
 
-def send_closure_advisory(driver, wait, symbol, entry, current_price, tid, direction):
+def send_closure_advisory(driver, wait, symbol, entry, current_price, tid, direction, reason):
     """Send early closure advisory"""
     pips = abs(round(current_price - entry, 5))
     profit_status = "in profit" if ((direction == "BUY" and current_price > entry) or 
@@ -560,7 +600,7 @@ def send_closure_advisory(driver, wait, symbol, entry, current_price, tid, direc
     message = f"""
 ⚠️ Trade Advisory: {symbol}
 ━━━━━━━━━━━━━━━━━━━━━━
-Price has reached key opposing level
+{reason}
 Consider securing profits or tightening stops
 🕒 Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}
 🆔 Trade ID: {tid}
@@ -577,6 +617,19 @@ Position status: {profit_status}
 def send_spontaneous_message(driver, wait):
     """Send various spontaneous messages"""
     now = datetime.now(timezone.utc)
+    
+    # Morning messages (6AM-10AM UTC)
+    if 6 <= now.hour <= 10:
+        msg = f"""
+☀️ Good Morning Traders!
+━━━━━━━━━━━━━━━━━━━━━━
+{random.choice([
+    "Markets are waking up - stay alert for opportunities",
+    "Fresh trading day ahead - review your watchlists",
+    "New session, new possibilities - trade with focus"
+])}
+"""
+        return send_whatsapp_message(driver, wait, msg)
     
     # Market session reminders
     sessions = [
@@ -599,8 +652,21 @@ def send_spontaneous_message(driver, wait):
 """
             return send_whatsapp_message(driver, wait, msg)
     
+    # Motivational messages
+    if random.random() > 0.85:
+        msg = f"""
+💪 Trading Wisdom
+━━━━━━━━━━━━━━━━━━━━━━
+"{random.choice([
+    "Discipline separates winners from gamblers",
+    "The market rewards patience more than brilliance",
+    "Risk management isn't expensive - it's priceless"
+])}"
+"""
+        return send_whatsapp_message(driver, wait, msg)
+    
     # Market status commentary
-    if random.random() > 0.1:
+    if random.random() > 0.9:
         symbols = random.sample(SYMBOL_LIST, min(2, len(SYMBOL_LIST)))
         comments = []
         
@@ -650,7 +716,7 @@ def send_test_message(driver, wait):
         print(f"❌ Failed to send test message: {e}")
         return False
     
-def simulate_signal(driver, wait, tracked):
+def simulate_signal(driver, wait, tracked, analytics):
     try:
         sym = "Volatility 25 Index"
         direction = random.choice(["BUY", "SELL"])
@@ -662,7 +728,20 @@ def simulate_signal(driver, wait, tracked):
         
         tps, sl = calc_tps_sl(price, direction, current_upper, current_lower)
         tid = gen_id(sym)
-        msg = generate_signal_message(sym, direction, price, tps, sl, tid, 1)
+        
+        # Create simulated indicators
+        indicators = {
+            'donchian_upper': current_upper,
+            'donchian_lower': current_lower,
+            'macd_main': random.uniform(-0.5, 0.5),
+            'macd_signal': random.uniform(-0.5, 0.5),
+            'macd_hist': random.uniform(-0.5, 0.5),
+            'rsi': random.uniform(30, 70),
+            'sma_9': price * random.uniform(0.99, 1.01),
+            'sma_21': price * random.uniform(0.99, 1.01)
+        }
+        
+        msg = generate_signal_message(sym, direction, price, tps, sl, tid, indicators)
         
         print(f"\n=== TESTING: Simulating {direction} signal for {sym} ===")
         print(f"Entry: {price}")
@@ -680,8 +759,8 @@ def simulate_signal(driver, wait, tracked):
                 "status": "open", 
                 "hit": [],
                 "simulated": True,
-                "high_touch": current_upper,
-                "low_touch": current_lower
+                "indicators": indicators,
+                "closure_advised": False
             }
             save_trades(tracked)
             print(f"✅ Simulated signal sent for {sym} {direction}")
@@ -782,7 +861,7 @@ def validate_signal(sym, direction, entry_price, tolerance=0.0005):
         print(f"❌ Signal validation failed for {sym}: {e}")
         return False
 
-def is_data_fresh(symbol, current_time, max_age=300):
+def is_data_fresh(symbol, current_time, max_age=120):
     """Check if market data is fresh (within max_age seconds)"""
     try:
         # Get time of last tick
@@ -810,6 +889,9 @@ if __name__ == "__main__":
     driver, wait = setup_whatsapp()
     print("WhatsApp setup complete")
     
+    # Initialize trade performance tracker
+    analytics = TradePerformance()
+    
     if TEST_MODE:
         for i in range(3):
             if send_test_message(driver, wait):
@@ -821,7 +903,7 @@ if __name__ == "__main__":
     print(f"Loaded {len(tracked)} tracked trades")
     
     if TEST_MODE and not tracked:
-        if simulate_signal(driver, wait, tracked):
+        if simulate_signal(driver, wait, tracked, analytics):
             print("Sleeping 10 seconds to verify message...")
             time.sleep(10)
     
@@ -830,6 +912,9 @@ if __name__ == "__main__":
     news_events = []
     alerted_events = set()  # Track events we've already alerted about
     last_session_update = None
+    
+    # Track last signal times per symbol
+    last_signal_times = {}
     
     try:
         while True:
@@ -875,33 +960,24 @@ if __name__ == "__main__":
                 else:
                     symbols = [s for s in all_symbols if "USD" in s or "XAU" in s]
                     
-                # Filter out symbols with stale data (5 min max age)
+                # Filter out symbols with stale data
                 symbols = [s for s in symbols if is_data_fresh(s, current_utc_time)]
                 print(f"Scanning {len(symbols)} symbols with fresh data...")
-                
-                # Volatility filter - skip symbols with low daily range
-                filtered_symbols = []
-                for sym in symbols:
-                    try:
-                        day_range = mt5.symbol_info(sym).point * 10000
-                        if day_range >= MIN_DAILY_RANGE:
-                            filtered_symbols.append(sym)
-                        else:
-                            print(f"⚠️ Skipping {sym} - daily range too low: {day_range:.5f}")
-                    except:
-                        continue
-                symbols = filtered_symbols
-                print(f"After volatility filter: {len(symbols)} symbols")
                 
                 debug_symbol = random.choice(symbols) if TEST_MODE and symbols else None
                 
                 for sym in symbols:
                     try:
+                        # Skip if we've recently sent a signal for this symbol
+                        if sym in last_signal_times:
+                            time_since_last = (current_utc_time - last_signal_times[sym]).total_seconds()
+                            if time_since_last < 300:  # 5 minutes cooldown
+                                continue
+                        
                         # Skip if already has an open trade
                         if sym in tracked and tracked[sym].get('status') == "open" and not tracked[sym].get('simulated', False):
                             continue
                         
-                        # Get market data
                         rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+50)
                         if rates is None or len(rates) < DONCHIAN_PERIOD+10:
                             continue
@@ -910,82 +986,63 @@ if __name__ == "__main__":
                         df['time'] = pd.to_datetime(df['time'], unit='s')
                         
                         # Calculate indicators
-                        up, low = get_donchian(df)
-                        macd, sig, hist = get_macd_sig_hist(df)
-                        rsi = get_rsi(df).iloc[-1]
-                        sma9 = get_sma(df, 9).iloc[-1]
-                        sma21 = get_sma(df, 21).iloc[-1]
+                        donchian_upper, donchian_lower = get_donchian(df)
+                        macd_line, signal_line, histogram = get_macd(df)
+                        rsi = get_rsi(df)
+                        sma_9 = get_sma(df, SMA_PERIOD_SHORT)
+                        sma_21 = get_sma(df, SMA_PERIOD_LONG)
                         
-                        last_close = df['close'].iloc[-1]
-                        prev_close = df['close'].iloc[-2]
-                        curr_hist = hist.iloc[-1]
-                        prev_hist = hist.iloc[-2]
-                        curr_macd = macd.iloc[-1]
-                        curr_sig = sig.iloc[-1]
-                        prev_macd = macd.iloc[-2]
-                        prev_sig = sig.iloc[-2]
-                        high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
-                        low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
+                        # Get current values
+                        current_close = df['close'].iloc[-1]
+                        current_upper = donchian_upper.iloc[-1]
+                        current_lower = donchian_lower.iloc[-1]
+                        current_hist = histogram.iloc[-1]
+                        current_signal = signal_line.iloc[-1]
+                        current_rsi = rsi.iloc[-1]
+                        current_sma_9 = sma_9.iloc[-1]
+                        current_sma_21 = sma_21.iloc[-1]
                         
-                        # === CRITICAL FIX: Enhanced signal detection ===
-                        signal_detected = False
-                        direction = None
-                        confidence = 1  # Base confidence
+                        # Determine SMA alignment
+                        sma_alignment = "Bullish" if current_sma_9 > current_sma_21 else "Bearish"
                         
-                        # BUY Signal: Price near lower band AND MACD histogram bullish crossover
-                        if last_close <= low.iloc[-1] * (1 + TOUCH_TOLERANCE):
-                            # MACD bullish crossover (histogram crossing above zero)
-                            if curr_hist > 0 and prev_hist <= 0:
-                                direction = "BUY"
-                                signal_detected = True
-                                
-                                # Add confidence based on confirmation filters
-                                if rsi < 30:  # Oversold
-                                    confidence += 1
-                                if sma9 > sma21:  # Bullish alignment
-                                    confidence += 1
+                        # Determine RSI status
+                        rsi_status = "Neutral"
+                        if current_rsi >= 70:
+                            rsi_status = "Overbought"
+                        elif current_rsi <= 30:
+                            rsi_status = "Oversold"
                         
-                        # SELL Signal: Price near upper band AND MACD histogram bearish crossover
-                        elif last_close >= up.iloc[-1] * (1 - TOUCH_TOLERANCE):
-                            # MACD bearish crossover (histogram crossing below zero)
-                            if curr_hist < 0 and prev_hist >= 0:
-                                direction = "SELL"
-                                signal_detected = True
-                                
-                                # Add confidence based on confirmation filters
-                                if rsi > 70:  # Overbought
-                                    confidence += 1
-                                if sma9 < sma21:  # Bearish alignment
-                                    confidence += 1
-                        
-                        # Debug logging for signal conditions
                         if TEST_MODE and sym == debug_symbol:
                             print(f"\n[DEBUG] {sym}:")
-                            print(f"  Last: {last_close:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
-                            print(f"  MACD Hist: {curr_hist:.5f} (prev: {prev_hist:.5f})")
-                            print(f"  RSI: {rsi:.2f}, SMA9: {sma9:.5f}, SMA21: {sma21:.5f}")
-                            print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
-                            print(f"  Buy Cond: {last_close <= low.iloc[-1] * (1+TOUCH_TOLERANCE)} & {curr_hist > 0} & {prev_hist <= 0}")
-                            print(f"  Sell Cond: {last_close >= up.iloc[-1] * (1-TOUCH_TOLERANCE)} & {curr_hist < 0} & {prev_hist >= 0}")
-                            print(f"  Signal Detected: {signal_detected}, Direction: {direction}")
+                            print(f"  Close: {current_close:.5f}, Upper: {current_upper:.5f}, Lower: {current_lower:.5f}")
+                            print(f"  MACD Histogram: {current_hist:.5f}, Signal: {current_signal:.5f}")
+                            print(f"  RSI: {current_rsi:.2f} ({rsi_status})")
+                            print(f"  SMA 9: {current_sma_9:.5f}, SMA 21: {current_sma_21:.5f} ({sma_alignment})")
                         
-                        if signal_detected and direction:
-                            # Get current tick price
-                            if direction == "BUY":
-                                price = mt5.symbol_info_tick(sym).ask
-                            else:
-                                price = mt5.symbol_info_tick(sym).bid
-                            
-                            # Price validation: non-zero and within 5% of last close
-                            if not is_valid_price(price, sym, prev_close):
-                                print(f"⚠️ Price validation failed for {sym} - skipping signal")
+                        # Signal detection - YOUR EXACT STRATEGY
+                        direction = None
+                        
+                        # SELL signal: Price touches upper band AND MACD histogram is below signal line
+                        if current_close >= current_upper and current_hist < current_signal:
+                            direction = "SELL"
+                            price = mt5.symbol_info_tick(sym).bid
+                        
+                        # BUY signal: Price touches lower band AND MACD histogram is above signal line
+                        elif current_close <= current_lower and current_hist > current_signal:
+                            direction = "BUY"
+                            price = mt5.symbol_info_tick(sym).ask
+                        
+                        if direction:
+                            # Skip if price validation fails
+                            if not is_valid_price(price, sym):
+                                print(f"⚠️ Invalid price for {sym} - skipping")
                                 continue
                             
-                            # Calculate TP/SL with Fibonacci levels
-                            tps, sl = calc_tps_sl(price, direction, high_touch, low_touch)
+                            # Calculate TP/SL
+                            tps, sl = calc_tps_sl(price, direction, current_upper, current_lower)
                             
                             # Validate prices before sending signal
-                            if not validate_prices(price, tps, sl, direction, sym, prev_close):
+                            if not validate_prices(price, tps, sl, direction, sym, current_close):
                                 print(f"⚠️ Price validation failed for {sym} - skipping signal")
                                 continue
                                 
@@ -995,8 +1052,23 @@ if __name__ == "__main__":
                                 continue
                                 
                             tid = gen_id(sym)
-                            msg = generate_signal_message(sym, direction, price, tps, sl, tid, confidence)
-                            print(f"Signal detected for {sym} {direction} (Confidence: {CONFIDENCE_LEVELS.get(confidence, 'Medium')})")
+                            
+                            # Prepare indicator data for message and logging
+                            indicators = {
+                                'donchian_upper': current_upper,
+                                'donchian_lower': current_lower,
+                                'macd_main': macd_line.iloc[-1],
+                                'macd_signal': current_signal,
+                                'macd_hist': current_hist,
+                                'rsi': current_rsi,
+                                'rsi_status': rsi_status,
+                                'sma_9': current_sma_9,
+                                'sma_21': current_sma_21,
+                                'sma_alignment': sma_alignment
+                            }
+                            
+                            msg = generate_signal_message(sym, direction, price, tps, sl, tid, indicators)
+                            print(f"Signal detected for {sym} {direction}")
                             
                             for attempt in range(3):
                                 if send_whatsapp_message(driver, wait, msg):
@@ -1009,10 +1081,12 @@ if __name__ == "__main__":
                                         "sl": sl,
                                         "status": "open", 
                                         "hit": [],
-                                        "high_touch": high_touch,
-                                        "low_touch": low_touch
+                                        "indicators": indicators,
+                                        "closure_advised": False,
+                                        "simulated": False
                                     }
                                     save_trades(tracked)
+                                    last_signal_times[sym] = current_utc_time
                                     print(f"✅ Signal sent for {sym} {direction}")
                                     break
                                 print(f"Retrying message send ({attempt+1}/3)...")
@@ -1031,95 +1105,140 @@ if __name__ == "__main__":
                         if not TEST_MODE and tr.get('simulated', False):
                             continue
                         
-                        # Safely get values with defaults
-                        high_touch = tr.get('high_touch', 0)
-                        low_touch = tr.get('low_touch', 0)
-                        tr.setdefault('hit', [])  # Ensure hit list exists
-                        tp_hit_count = len(tr['hit'])  # Track how many TPs were hit
-
                         tick = mt5.symbol_info_tick(sym)
                         if not tick:
                             continue
                             
                         price = tick.bid if tr['dir'] == "SELL" else tick.ask
                         
-                        # Check for early closure condition (opposite band touch)
+                        # Check for early closure conditions
+                        closure_reason = None
+                        
+                        # 1. Opposite Donchian band touch
                         try:
                             rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, DONCHIAN_PERIOD+10)
                             if rates and len(rates) >= DONCHIAN_PERIOD:
                                 df = pd.DataFrame(rates)
-                                current_up = df['high'].rolling(DONCHIAN_PERIOD).max().iloc[-1]
-                                current_low = df['low'].rolling(DONCHIAN_PERIOD).min().iloc[-1]
+                                donchian_upper, donchian_lower = get_donchian(df)
+                                current_upper = donchian_upper.iloc[-1]
+                                current_lower = donchian_lower.iloc[-1]
                                 
-                                if tr['dir'] == "BUY" and price <= current_low:
-                                    if not tr.get('closure_advised', False):
-                                        if send_closure_advisory(driver, wait, sym, tr['entry'], price, tr['id'], tr['dir']):
-                                            tr['closure_advised'] = True
-                                            print(f"⚠️ Early closure advised for {sym}")
-                                
-                                elif tr['dir'] == "SELL" and price >= current_up:
-                                    if not tr.get('closure_advised', False):
-                                        if send_closure_advisory(driver, wait, sym, tr['entry'], price, tr['id'], tr['dir']):
-                                            tr['closure_advised'] = True
-                                            print(f"⚠️ Early closure advised for {sym}")
-                        except:
-                            pass
+                                if tr['dir'] == "BUY" and price <= current_lower:
+                                    closure_reason = "Price touched opposite (lower) Donchian band"
+                                elif tr['dir'] == "SELL" and price >= current_upper:
+                                    closure_reason = "Price touched opposite (upper) Donchian band"
+                        except Exception as e:
+                            print(f"⚠️ Error checking Donchian for {sym}: {e}")
+                        
+                        # 2. MACD crossover
+                        if not closure_reason:
+                            try:
+                                rates = mt5.copy_rates_from_pos(sym, TIMEFRAME, 0, 3)
+                                if rates and len(rates) >= 2:
+                                    df = pd.DataFrame(rates)
+                                    _, signal_line, histogram = get_macd(df)
+                                    current_hist = histogram.iloc[-1]
+                                    current_signal = signal_line.iloc[-1]
+                                    prev_hist = histogram.iloc[-2]
+                                    prev_signal = signal_line.iloc[-2]
+                                    
+                                    # Check for crossover
+                                    if tr['dir'] == "BUY":
+                                        if prev_hist > prev_signal and current_hist < current_signal:
+                                            closure_reason = "MACD histogram crossed below signal line"
+                                    else:  # SELL
+                                        if prev_hist < prev_signal and current_hist > current_signal:
+                                            closure_reason = "MACD histogram crossed above signal line"
+                            except Exception as e:
+                                print(f"⚠️ Error checking MACD for {sym}: {e}")
+                        
+                        # Send advisory if closure condition met
+                        if closure_reason and not tr.get('closure_advised', False):
+                            if send_closure_advisory(driver, wait, sym, tr['entry'], price, tr['id'], tr['dir'], closure_reason):
+                                print(f"⚠️ Closure advisory sent for {sym}: {closure_reason}")
+                                tr['closure_advised'] = True
+                                tracked[sym] = tr
+                                save_trades(tracked)
                         
                         # Check TP hits
                         for i, tp in enumerate(tr['tps']):
                             if tp not in tr['hit']:
                                 if (tr['dir'] == "BUY" and price >= tp) or (tr['dir'] == "SELL" and price <= tp):
                                     tr['hit'].append(tp)
-                                    tp_hit_count += 1
                                     event = f"TP{i+1} hit @ {tp}"
                                     print(f"✅ {sym} {event}")
                                     send_trade_update(driver, wait, sym, "TP_HIT", event, tr['id'])
-                                    log_trade_performance(sym, tr['dir'], tr['entry'], tp, 
-                                                        f"TP{i+1}", abs(tp - tr['entry']), 
-                                                        tr['id'], high_touch, low_touch, tp_hit_count)
-                        
+                                    
+                                    # Log performance
+                                    trade_data = {
+                                        'Timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                                        'TradeID': tr['id'],
+                                        'Symbol': sym,
+                                        'Direction': tr['dir'],
+                                        'Entry': tr['entry'],
+                                        'Exit': tp,
+                                        'Outcome': f"TP{i+1}",
+                                        'Pips': abs(tp - tr['entry']),
+                                        'DonchianUpper': tr['indicators']['donchian_upper'],
+                                        'DonchianLower': tr['indicators']['donchian_lower'],
+                                        'MACD_Main': tr['indicators']['macd_main'],
+                                        'MACD_Signal': tr['indicators']['macd_signal'],
+                                        'MACD_Hist': tr['indicators']['macd_hist'],
+                                        'RSI': tr['indicators']['rsi'],
+                                        'RSI_Status': tr['indicators']['rsi_status'],
+                                        'SMA_9': tr['indicators']['sma_9'],
+                                        'SMA_21': tr['indicators']['sma_21'],
+                                        'SMA_Alignment': tr['indicators']['sma_alignment']
+                                    }
+                                    analytics.log_trade(trade_data)
+                                    
+                                    # Close trade if all TPs hit
+                                    if len(tr['hit']) == len(tr['tps']):
+                                        tr['status'] = "closed"
+                                        print(f"🏁 {sym} All TPs reached")
+                                        send_trade_update(driver, wait, sym, "ALL_TP", "", tr['id'])
+                                        tracked[sym] = tr
+                                        save_trades(tracked)
+                
                         # Check SL hit
                         if (tr['dir'] == "BUY" and price <= tr['sl']) or (tr['dir'] == "SELL" and price >= tr['sl']):
-                            tr['status'] = "closed-sl"
+                            tr['status'] = "closed"
                             
-                            # Determine outcome based on TP hits
-                            if tp_hit_count > 0:
-                                event = f"SL hit @ {tr['sl']} after {tp_hit_count} TP(s)"
-                                outcome = "WIN (Partial)"
+                            # Determine SL outcome based on TP hits
+                            if len(tr['hit']) > 0:
+                                outcome = "SL after TP (Win)"
+                                event = f"SL hit after TP @ {tr['sl']} (Win)"
                             else:
-                                event = f"SL hit @ {tr['sl']} without any TP"
-                                outcome = "LOSS"
-                                
+                                outcome = "SL without TP (Loss)"
+                                event = f"SL hit without any TP @ {tr['sl']} (Loss)"
+                            
                             print(f"🛑 {sym} {event}")
                             send_trade_update(driver, wait, sym, "SL_HIT", event, tr['id'])
+                            tracked[sym] = tr
+                            save_trades(tracked)
                             
-                            # Calculate pips with direction awareness
-                            pips = abs(tr['sl'] - tr['entry'])
-                            if (tr['dir'] == "BUY" and tr['sl'] < tr['entry']) or \
-                               (tr['dir'] == "SELL" and tr['sl'] > tr['entry']):
-                                pips = -pips
-                                
-                            log_trade_performance(sym, tr['dir'], tr['entry'], tr['sl'], 
-                                                "SL", pips, 
-                                                tr['id'], high_touch, low_touch, tp_hit_count)
-                        
-                        # Check all TPs hit
-                        if len(tr['hit']) == len(tr['tps']):
-                            tr['status'] = "closed-tp4"
-                            print(f"🏁 {sym} All TPs reached")
-                            send_trade_update(driver, wait, sym, "ALL_TP", "", tr['id'])
-                            
-                            # Calculate pips with direction awareness
-                            pips = abs(tr['tps'][-1] - tr['entry'])
-                            if (tr['dir'] == "BUY" and tr['tps'][-1] > tr['entry']) or \
-                               (tr['dir'] == "SELL" and tr['tps'][-1] < tr['entry']):
-                                pips = abs(pips)
-                            else:
-                                pips = -abs(pips)
-                                
-                            log_trade_performance(sym, tr['dir'], tr['entry'], tr['tps'][-1], 
-                                                "ALL_TP", pips, 
-                                                tr['id'], high_touch, low_touch, len(tr['tps']))
+                            # Log performance
+                            trade_data = {
+                                'Timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                                'TradeID': tr['id'],
+                                'Symbol': sym,
+                                'Direction': tr['dir'],
+                                'Entry': tr['entry'],
+                                'Exit': tr['sl'],
+                                'Outcome': outcome,
+                                'Pips': -abs(tr['sl'] - tr['entry']),
+                                'DonchianUpper': tr['indicators']['donchian_upper'],
+                                'DonchianLower': tr['indicators']['donchian_lower'],
+                                'MACD_Main': tr['indicators']['macd_main'],
+                                'MACD_Signal': tr['indicators']['macd_signal'],
+                                'MACD_Hist': tr['indicators']['macd_hist'],
+                                'RSI': tr['indicators']['rsi'],
+                                'RSI_Status': tr['indicators']['rsi_status'],
+                                'SMA_9': tr['indicators']['sma_9'],
+                                'SMA_21': tr['indicators']['sma_21'],
+                                'SMA_Alignment': tr['indicators']['sma_alignment']
+                            }
+                            analytics.log_trade(trade_data)
                     
                     except Exception as trade_error:
                         print(f"⚠️ Error processing trade {sym}: {trade_error}")
