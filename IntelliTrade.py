@@ -220,12 +220,14 @@ def setup_whatsapp():
 
 # === CONFIG ===
 MT5_PATH = r"C:\Program Files\MetaTrader 5 Terminal\terminal64.exe"
-TIMEFRAME = mt5.TIMEFRAME_M1
-DONCHIAN_PERIOD = 20
-MACD_FAST, MACD_SLOW, MACD_SIGNAL = 12, 26, 9
+TIMEFRAME = mt5.TIMEFRAME_M30  # Changed to M30 timeframe
+DONCHIAN_PERIOD = 14           # Optimized period
+MACD_FAST, MACD_SLOW, MACD_SIGNAL = 8, 17, 9  # Optimized parameters
 FIB_LEVELS = [100, 161.8, 261.8, 423.6]
 RR = 3
 TRACK_FILE = "intellitrade_trades.json"
+TOUCH_TOLERANCE = 0.0003       # 3 pips tolerance
+MIN_DAILY_RANGE = 0.005        # 0.5% minimum daily range
 
 # Strategy-agnostic reasons
 REASONS = [
@@ -576,19 +578,6 @@ def send_spontaneous_message(driver, wait):
     """Send various spontaneous messages"""
     now = datetime.now(timezone.utc)
     
-    # Morning messages (6AM-10AM UTC)
-#     if 6 <= now.hour <= 7:
-#         msg = f"""
-# ☀️ Good Morning Traders!
-# ━━━━━━━━━━━━━━━━━━━━━━
-# {random.choice([
-#     "Markets are waking up - stay alert for opportunities",
-#     "Fresh trading day ahead - review your watchlists",
-#     "New session, new possibilities - trade with focus"
-# ])}
-# """
-#         return send_whatsapp_message(driver, wait, msg)
-    
     # Market session reminders
     sessions = [
         ("London Open", 7, "European pairs coming alive"),
@@ -609,19 +598,6 @@ def send_spontaneous_message(driver, wait):
 ])}
 """
             return send_whatsapp_message(driver, wait, msg)
-    
-    # Motivational messages
-    if random.random() > 0.05:
-        msg = f"""
-💪 Trading Wisdom
-━━━━━━━━━━━━━━━━━━━━━━
-"{random.choice([
-    "Discipline separates winners from gamblers",
-    "The market rewards patience more than brilliance",
-    "Risk management isn't expensive - it's priceless"
-])}"
-"""
-        return send_whatsapp_message(driver, wait, msg)
     
     # Market status commentary
     if random.random() > 0.1:
@@ -903,6 +879,20 @@ if __name__ == "__main__":
                 symbols = [s for s in symbols if is_data_fresh(s, current_utc_time)]
                 print(f"Scanning {len(symbols)} symbols with fresh data...")
                 
+                # Volatility filter - skip symbols with low daily range
+                filtered_symbols = []
+                for sym in symbols:
+                    try:
+                        day_range = mt5.symbol_info(sym).point * 10000
+                        if day_range >= MIN_DAILY_RANGE:
+                            filtered_symbols.append(sym)
+                        else:
+                            print(f"⚠️ Skipping {sym} - daily range too low: {day_range:.5f}")
+                    except:
+                        continue
+                symbols = filtered_symbols
+                print(f"After volatility filter: {len(symbols)} symbols")
+                
                 debug_symbol = random.choice(symbols) if TEST_MODE and symbols else None
                 
                 for sym in symbols:
@@ -937,22 +927,15 @@ if __name__ == "__main__":
                         high_touch = df['high'].iloc[-DONCHIAN_PERIOD:].max()
                         low_touch = df['low'].iloc[-DONCHIAN_PERIOD:].min()
                         
-                        if TEST_MODE and sym == debug_symbol:
-                            print(f"\n[DEBUG] {sym}:")
-                            print(f"  Last: {last_close:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
-                            print(f"  MACD: {curr_macd:.5f}, Signal: {curr_sig:.5f}")
-                            print(f"  RSI: {rsi:.2f}, SMA9: {sma9:.5f}, SMA21: {sma21:.5f}")
-                            print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
-                        
-                        # Signal detection
+                        # === CRITICAL FIX: Enhanced signal detection ===
                         signal_detected = False
                         direction = None
                         confidence = 1  # Base confidence
                         
-                        # BUY Signal: Price touches lower band AND MACD bullish crossover
-                        if last_close <= low.iloc[-1]:
-                            # MACD bullish crossover (current MACD > current Signal AND previous MACD <= previous Signal)
-                            if curr_macd > curr_sig and prev_macd <= prev_sig:
+                        # BUY Signal: Price near lower band AND MACD histogram bullish crossover
+                        if last_close <= low.iloc[-1] * (1 + TOUCH_TOLERANCE):
+                            # MACD bullish crossover (histogram crossing above zero)
+                            if curr_hist > 0 and prev_hist <= 0:
                                 direction = "BUY"
                                 signal_detected = True
                                 
@@ -962,10 +945,10 @@ if __name__ == "__main__":
                                 if sma9 > sma21:  # Bullish alignment
                                     confidence += 1
                         
-                        # SELL Signal: Price touches upper band AND MACD bearish crossover
-                        elif last_close >= up.iloc[-1]:
-                            # MACD bearish crossover (current MACD < current Signal AND previous MACD >= previous Signal)
-                            if curr_macd < curr_sig and prev_macd >= prev_sig:
+                        # SELL Signal: Price near upper band AND MACD histogram bearish crossover
+                        elif last_close >= up.iloc[-1] * (1 - TOUCH_TOLERANCE):
+                            # MACD bearish crossover (histogram crossing below zero)
+                            if curr_hist < 0 and prev_hist >= 0:
                                 direction = "SELL"
                                 signal_detected = True
                                 
@@ -974,6 +957,17 @@ if __name__ == "__main__":
                                     confidence += 1
                                 if sma9 < sma21:  # Bearish alignment
                                     confidence += 1
+                        
+                        # Debug logging for signal conditions
+                        if TEST_MODE and sym == debug_symbol:
+                            print(f"\n[DEBUG] {sym}:")
+                            print(f"  Last: {last_close:.5f}, Up: {up.iloc[-1]:.5f}, Low: {low.iloc[-1]:.5f}")
+                            print(f"  MACD Hist: {curr_hist:.5f} (prev: {prev_hist:.5f})")
+                            print(f"  RSI: {rsi:.2f}, SMA9: {sma9:.5f}, SMA21: {sma21:.5f}")
+                            print(f"  High Touch: {high_touch:.5f}, Low Touch: {low_touch:.5f}")
+                            print(f"  Buy Cond: {last_close <= low.iloc[-1] * (1+TOUCH_TOLERANCE)} & {curr_hist > 0} & {prev_hist <= 0}")
+                            print(f"  Sell Cond: {last_close >= up.iloc[-1] * (1-TOUCH_TOLERANCE)} & {curr_hist < 0} & {prev_hist >= 0}")
+                            print(f"  Signal Detected: {signal_detected}, Direction: {direction}")
                         
                         if signal_detected and direction:
                             # Get current tick price
